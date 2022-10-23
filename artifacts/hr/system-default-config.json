@@ -1,0 +1,32 @@
+{
+  "wallet": {
+    "address": "EQCVTtMBwAMOR2wfHvwcdXetodx4AccP3cDokQj0tB-LKwcP",
+    "publicKey": "9dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5",
+    "secretKey": "79294fdb1531344657342dd53077f21a2413fda7f61d9e00ef96bf4f73003ef19dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5"
+  },
+  "oracleWallet": {
+    "address": "Ef9MRHJj6JzkENaUJFRyJ7hWQDmqKakZf8icd7UV2gGvBPts",
+    "publicKey": "c7f43fdd48378db69f71e10c96b1a841e6c1b73f9abb8f1e16b581c8f9cccc17",
+    "secretKey": "1a9920e28f90feb62d218943e4d953b71d5ba87396a37f1ae997c1b74e8bb397c7f43fdd48378db69f71e10c96b1a841e6c1b73f9abb8f1e16b581c8f9cccc17"
+  },
+  "multisig": {
+    "address": "Ef9k9Ml2uiAM89ytB7BnylNRmLRjFzJBsA9mOrEiKBSnm0CF",
+    "publicKey": "c7f43fdd48378db69f71e10c96b1a841e6c1b73f9abb8f1e16b581c8f9cccc17",
+    "secretKey": "1a9920e28f90feb62d218943e4d953b71d5ba87396a37f1ae997c1b74e8bb397c7f43fdd48378db69f71e10c96b1a841e6c1b73f9abb8f1e16b581c8f9cccc17"
+  },
+  "votesCollector": {
+    "address": "Ef_2-VJwdIHHuoH-jxcs4zBOVUr9t9mBa1wLL6Bmv-Hs1ac1",
+    "publicKey": "9dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5",
+    "secretKey": "79294fdb1531344657342dd53077f21a2413fda7f61d9e00ef96bf4f73003ef19dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5"
+  },
+  "bridge": {
+    "address": "Ef9y6choqNSylfn2Y52bo_adb_1daqghIA3MZsKDFp7RcBJ2",
+    "publicKey": "9dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5",
+    "secretKey": "79294fdb1531344657342dd53077f21a2413fda7f61d9e00ef96bf4f73003ef19dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5"
+  },
+  "jettonBridge": {
+    "address": "Ef_rBBSE1IS_6GczlzbtD5M7RE_pL1PvID8Wob4SaBlsT2je",
+    "publicKey": "9dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5",
+    "secretKey": "79294fdb1531344657342dd53077f21a2413fda7f61d9e00ef96bf4f73003ef19dfda8c845cdce5ea992db227e3d02650dd0e7411d29163b973342d74b28cdc5"
+  }
+}

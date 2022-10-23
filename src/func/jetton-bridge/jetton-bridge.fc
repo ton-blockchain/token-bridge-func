@@ -1,0 +1,239 @@
+;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell
+(slice, cell, cell) load_data() inline_ref {
+    slice slice_data = get_data().begin_parse();
+    return (slice_data~load_msg_addr(), slice_data~load_ref(), slice_data~load_ref());
+}
+
+() save_data(slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) impure inline_ref {
+    set_data(begin_cell()
+        .store_slice(collector_address)
+        .store_ref(jetton_minter_code)
+        .store_ref(jetton_wallet_code)
+        .end_cell()
+    );
+}
+
+(slice, cell) calculate_minter_address(slice data) impure inline_ref {
+    (_, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+    cell wrapped_token_data = data~load_ref();
+    cell jetton_minter_data = begin_cell()
+            .store_coins(0) ;; total_supply
+            .store_ref(jetton_wallet_code)
+            .store_ref(wrapped_token_data)
+            .end_cell();
+
+    cell jetton_minter_state_init = begin_cell()
+            .store_uint(0, 2)
+            .store_dict(jetton_minter_code)
+            .store_dict(jetton_minter_data)
+            .store_uint(0, 1)
+            .end_cell();
+
+    slice minter_address = calculate_address_by_init_state(jetton_minter_state_init);
+    return (minter_address, jetton_minter_state_init);
+}
+
+() mint_tokens(
+    cell forward_coins_amounts,
+    cell jetton_minter_code,
+    cell jetton_wallet_code,
+    cell wrapped_token_data,
+    slice to_address,
+    int mint_jetton_amount,
+    slice multisig_address,
+    int query_id
+) impure {
+    slice slice_forward_coins_amounts = forward_coins_amounts.begin_parse();
+    (
+        int minter_coins_amount,
+        int wallet_coins_amount,
+        int forward_coins_amount
+    ) = (
+        slice_forward_coins_amounts~load_coins(),
+        slice_forward_coins_amounts~load_coins(),
+        slice_forward_coins_amounts~load_coins()
+    );
+
+    slice wrapped_token_data_slice = wrapped_token_data.begin_parse();
+    wrapped_token_data_slice~skip_bits(32 + 256);
+    int decimals = wrapped_token_data_slice.preload_uint(8); 
+
+    throw_if(error::decimals_out_of_range(), decimals > 99);
+
+    slice data = begin_cell().store_ref(wrapped_token_data).end_cell().begin_parse();
+    (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(data);
+
+    cell master_msg = begin_cell() ;; mint tokens to wallet address
+        .store_uint(op::mint(), 32)
+        .store_uint(query_id, 64)
+        .store_slice(to_address)
+        .store_coins(wallet_coins_amount) 
+        .store_coins(mint_jetton_amount)
+        .store_slice(multisig_address) ;; response_address
+        .end_cell();
+
+    var msg = begin_cell()
+        .store_uint(0x18, 6)
+        .store_slice(minter_address)
+        .store_coins(minter_coins_amount)
+        .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+        .store_ref(jetton_minter_state_init)
+        .store_ref(master_msg);
+
+    send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
+}
+
+() execute_voting (slice oracles_address, slice voting_data, int query_id) impure {
+    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+
+    int op = voting_data~load_uint(32);
+
+    throw_if(error::unknown_execute_voting_op(),
+        (op != op::execute_voting::swap()) &
+        (op != op::execute_voting::get_reward()) &
+        (op != op::execute_voting::change_collector()));
+
+    if (op == op::execute_voting::swap()) {
+        (
+            int ext_chain_hash,
+            int internal_index, 
+            int workchain,
+            int addr_hash,
+            int mint_jetton_amount,
+            cell wrapped_token_data,
+            cell forward_coins_amounts
+        ) = (
+            voting_data~load_uint(256),
+            voting_data~load_int(16),
+            voting_data~load_int(8),
+            voting_data~load_uint(256),
+            voting_data~load_coins(),
+            voting_data~load_ref(),
+            voting_data~load_ref()
+        );
+
+        voting_data.end_parse();
+
+        slice to_wallet_address = begin_cell()
+            .store_uint(4, 3)
+            .store_int(workchain, 8)
+            .store_uint(addr_hash, 256)
+            .end_cell()
+            .begin_parse();
+
+        mint_tokens(
+            forward_coins_amounts,
+            jetton_minter_code,
+            jetton_wallet_code,
+            wrapped_token_data,
+            to_wallet_address,
+            mint_jetton_amount,
+            oracles_address, ;; multisig_address
+            query_id
+        );
+
+    } elseif (op == op::execute_voting::get_reward()) {
+
+        ;; reserve 100 Toncoins for storage fees
+        raw_reserve(100000000000, 2);
+        var msg = begin_cell()
+                .store_uint(0x18, 6) ;; #int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddressInt = 0 1 1 0 00
+                .store_slice(oracles_address)
+                .store_grams(0)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+        send_raw_message(msg.end_cell(), 128); ;; send all the remainings
+
+    } elseif (op == op::execute_voting::change_collector()) {
+        collector_address = voting_data~load_msg_addr();
+    }
+
+    save_data(collector_address, jetton_minter_code, jetton_wallet_code);
+}
+
+() emit_log_simple (int event_id, slice data) impure inline {
+    var msg = begin_cell()
+        .store_uint (12, 4) ;; ext_out_msg_info$11 src:MsgAddressInt ()
+        .store_uint (1, 2)
+        .store_uint (256, 9)
+        .store_uint(event_id, 256)
+        .store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+        .store_slice(data)
+        .end_cell();
+    send_raw_message(msg, 0);
+}
+
+() recv_internal(int msg_value, cell in_msg, slice in_msg_body) impure {
+    var cs = in_msg.begin_parse();
+    var flags = cs~load_uint(4);
+    if (flags & 1) {
+        return ();
+    }
+
+    throw_if(error::inbound_message_has_empty_body(), in_msg_body.slice_empty?());
+
+    int op = in_msg_body~load_uint(32);
+    int query_id = in_msg_body~load_uint(64);
+
+    throw_if(error::unknown_op(), (op != op::burn_notification()) & (op != op::execute_voting()));
+
+    slice sender_address = cs~load_msg_addr(); ;; multisig_address
+    (_, int sender_address_hash) = parse_std_addr(sender_address);
+
+    (_, int oracles_address_hash, _, _, int bridge_burn_fee) = get_jetton_bridge_config();
+
+    if (op == op::execute_voting()) {
+        throw_unless(error::oracles_not_sender(), oracles_address_hash == sender_address_hash);
+        execute_voting(sender_address, in_msg_body, query_id); 
+    } elseif (op == op::burn_notification()) {
+        slice body = in_msg_body~load_ref().begin_parse();
+        cell wrapped_token_data = in_msg_body~load_ref();
+        
+        body~skip_bits(32 + 64);
+        int jetton_amount = body~load_coins();
+        slice from_address = body~load_msg_addr();
+        slice response_address = body~load_msg_addr();
+        int destination_address = body~load_uint(160);
+
+        (_, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+
+        slice data = begin_cell().store_ref(wrapped_token_data).end_cell().begin_parse();
+            (slice minter_address, _) = calculate_minter_address(data);
+
+        throw_unless(error::minter_not_sender(), equal_slices(minter_address, sender_address));
+        (int chain_id, int token_address, _, _, _) = unpack_wrapped_token_data(wrapped_token_data);
+
+        if (response_address.preload_uint(2) != 0) {
+            var msg = begin_cell()
+                .store_uint(0x10, 6)
+                .store_slice(response_address)
+                .store_coins(msg_value - bridge_burn_fee)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_uint(op::excesses(), 32)
+                .store_uint(query_id, 64);
+            send_raw_message(msg.end_cell(), 2);
+        }
+
+        emit_log_simple(0xc0470ccf, 
+            begin_cell().store_uint(destination_address, 160)
+        .store_uint(jetton_amount, 64)
+        .store_uint(token_address, 256)
+        .end_cell().begin_parse());
+    }
+}
+
+;; get methods
+
+slice get_minter_address(slice data) method_id {
+    (slice minter_address, _) = calculate_minter_address(data);
+    return minter_address;
+}
+
+_ get_bridge_data() method_id {
+    (slice collector_address_slice, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+    (int wc, int addr) = parse_std_addr(collector_address_slice);
+    return (wc, addr, jetton_minter_code, jetton_wallet_code);
+}
+
+int get_test() method_id {
+    return 105;
+}

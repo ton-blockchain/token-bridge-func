@@ -1,0 +1,14 @@
+int op::transfer() asm "0xf8a7ea5 PUSHINT";
+int op::transfer_notification() asm "0x7362d09c PUSHINT";
+int op::internal_transfer() asm "0x178d4519 PUSHINT";
+int op::excesses() asm "0xd53276db PUSHINT";
+int op::burn() asm "0x595f07bc PUSHINT";
+int op::burn_notification() asm "0x7bdd97de PUSHINT";
+
+int op::execute_voting() asm "4 PUSHINT";
+int op::execute_voting::swap() asm "0 PUSHINT";
+int op::execute_voting::get_reward() asm "5 PUSHINT";
+int op::execute_voting::change_collector() asm "7 PUSHINT";
+
+;; Minter
+int op::mint() asm "21 PUSHINT";

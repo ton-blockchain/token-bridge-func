@@ -1,0 +1,15 @@
+;; global errors
+int error::inbound_message_has_empty_body() asm "200 PUSHINT";
+int error::unknown_op() asm "210 PUSHINT";
+int error::unknown_execute_voting_op() asm "211 PUSHINT";
+int error::unknown_radix() asm "212 PUSHINT";
+
+;; data errors
+int error::incorrect_voting_data() asm "320 PUSHINT";
+int error::decimals_out_of_range() asm "330 PUSHINT";
+
+;; wrong sender errors
+int error::oracles_not_sender() asm "401 PUSHINT";
+int error::minter_not_sender() asm "402 PUSHINT";
+int error::bridge_not_sender() asm "403 PUSHINT";
+int error::owner_not_sender() asm "404 PUSHINT";

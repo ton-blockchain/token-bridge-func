@@ -1,0 +1,65 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+"Lists.fif" include
+"Stack.fif" include
+
+{ ."usage: " @' $0 type ." <workchain-id> <wallet-id> <spend-delay> <filename-base> <k> <pubkeys-file>" cr
+  ."Creates a new multisig wallet in specified workchain, controlled by specified public keys, loaded from <pubkeys-file>" cr
+  ."and saves to <filname-base>-query.boc" cr 1 halt
+} : usage
+$# 5 < ' usage if
+
+// $ -- l
+{
+  null swap
+  { dup $len }
+  { 48 $| swap parse-pubkey swap
+  	dup $len { 1 $| nip } if
+    // D pk S
+    -rot swap cons swap
+  } while
+  drop list-reverse
+} : load-pubkeys
+
+$1 parse-workchain-id constant wc
+$2 parse-int constant wallet-id
+$3 parse-int constant spend-delay
+$4 constant file-base
+$5 parse-int constant k
+$6 file>B B>$ load-pubkeys constant pubkeys
+pubkeys list-length constant n
+
+wallet-id 32 ufits { ."wallet-id must fit to 32-bit unsigned integer type" cr 1 halt } ifnot
+k 8 ufits { ."k must fit to 8-bit unsigned integer type" cr 1 halt } ifnot
+n 8 ufits { ."n must fit to 8-bit unsigned integer type" cr 1 halt } ifnot
+k n > { ."k must be <= n" cr 1 halt } if
+
+"build/jetton-bridge/multisig.fif" include constant code
+
+dictnew 0 pubkeys {
+  uncons swap <b swap 256 u, 0 8 u,
+  S(D x t v - x t v x D)
+  8 b>udict! drop rot 1+ rot
+} n times 2drop constant owner_infos
+
+{ $>B crc16 0xffff and 0x10000 or } : method_id
+
+wallet-id
+n
+k
+owner_infos
+spend-delay
+"create_init_state" method_id code <s <b b> runvm 2drop constant storage
+
+code storage null <b b{0011} s, 3 roll ref, rot ref, swap dict, b> constant StateInit
+
+StateInit hashu wc swap 2dup 2constant wallet_addr
+."new wallet address = " 2dup .addr cr
+2dup file-base +".addr" save-address-verbose
+."Non-bounceable address (for init): " 2dup 7 .Addr cr
+."Bounceable address (for later access): " 6 .Addr cr
+
+<b b{1000100} s, wallet_addr addr, b{000011} s, StateInit ref, b{0} s, b> dup constant extmessage
+2 boc+>B
+file-base +"-create.boc" tuck B>file
+."(Saved wallet creating query to file " type .")" cr
