@@ -7,20 +7,20 @@ _ unpack_state() inline_ref {
 
 _ pack_state(cell pending_queries, cell owner_infos, int last_cleaned, int k, int n, int wallet_id, int spend_delay) inline_ref {
   return begin_cell()
-    .store_uint(wallet_id, 32)
-    .store_uint(n, 8)
-    .store_uint(k, 8)
-    .store_uint(last_cleaned, 64)
-    .store_dict(owner_infos)
-    .store_dict(pending_queries)
-    .store_uint(spend_delay,32)
-  .end_cell();
+          .store_uint(wallet_id, 32)
+          .store_uint(n, 8)
+          .store_uint(k, 8)
+          .store_uint(last_cleaned, 64)
+          .store_dict(owner_infos)
+          .store_dict(pending_queries)
+          .store_uint(spend_delay,32)
+          .end_cell();
 }
 
 _ pack_owner_info(int public_key, int flood) inline_ref {
   return begin_cell()
-    .store_uint(public_key, 256)
-    .store_uint(flood, 8);
+          .store_uint(public_key, 256)
+          .store_uint(flood, 8);
 }
 
 _ unpack_owner_info(slice cs) inline_ref {
@@ -100,21 +100,21 @@ _ unpack_owner_info(slice cs) inline_ref {
 
 (cell, cell) update_pending_queries(cell pending_queries, cell owner_infos, slice msg, int query_id, int creator_i, int cnt, int cnt_bits, int n, int k) impure inline_ref {
   if (cnt >= k) {
-    (int jetton_bridge_address_hash, int oracles_address_hash, _, _, _) = get_jetton_bridge_config();
+    (int bridge_address, int oracles_address, _, _, _) = get_jetton_bridge_config();
     (_, int my_addr) = parse_std_addr(my_address());
     var (mode, msg', wc, addr) = parse_msg(msg);
-    if ( ((wc == -1) & (addr == jetton_bridge_address_hash)) | (oracles_address_hash != my_addr) ) {
-       send_raw_message(msg', mode);
+    if ( ((wc == -1) & (addr == bridge_address)) | (oracles_address != my_addr) ) {
+      send_raw_message(msg', mode);
     }
     pending_queries~udict_set_builder(64, query_id, begin_cell().store_int(0, 1));
     owner_infos~dec_flood(creator_i);
   } else {
     pending_queries~udict_set_builder(64, query_id, begin_cell()
-      .store_uint(1, 1)
-      .store_uint(creator_i, 8)
-      .store_uint(cnt, 8)
-      .store_uint(cnt_bits, n)
-      .store_slice(msg));
+            .store_uint(1, 1)
+            .store_uint(creator_i, 8)
+            .store_uint(cnt, 8)
+            .store_uint(cnt_bits, n)
+            .store_slice(msg));
   }
   return (pending_queries, owner_infos);
 }
@@ -139,7 +139,7 @@ _ unpack_owner_info(slice cs) inline_ref {
   ;; Check root signature
   slice root_signature = in_msg~load_bits(512);
   int root_hash = slice_hash(in_msg);
-  int root_i = in_msg~load_uint(8); ;; ton multisig index
+  int root_i = in_msg~load_uint(8);
 
   (int wallet_id, int n, int k, int last_cleaned, cell owner_infos, cell pending_queries, int spend_delay) = unpack_state();
 
@@ -154,10 +154,10 @@ _ unpack_owner_info(slice cs) inline_ref {
   cell signatures = in_msg~load_dict();
 
   var hash = slice_hash(in_msg);
-  int query_wallet_id = in_msg~load_uint(32); ;;wallet id
+  int query_wallet_id = in_msg~load_uint(32);
   throw_unless(42, query_wallet_id == wallet_id);
 
-  int query_id = in_msg~load_uint(64); ;;query id
+  int query_id = in_msg~load_uint(64);
 
   (int cnt, int bits) = calc_boc_size(0, 0, in_msg);
   throw_if(40, (cnt > 8) | (bits > 2048));
@@ -221,10 +221,10 @@ _ unpack_owner_info(slice cs) inline_ref {
   cs~skip_bits(4);
   slice s_addr = cs~load_msg_addr();
   var msg = begin_cell().store_uint(0x18, 6)
-                        .store_slice(s_addr)
-                        .store_grams(0)
-                        .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-            .end_cell();
+          .store_slice(s_addr)
+          .store_grams(0)
+          .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+          .end_cell();
   send_raw_message(msg, 64 + 2);
 }
 
@@ -354,12 +354,12 @@ cell merge_inner_queries(cell a, cell b) method_id {
   cell list_b = cb~load_dict();
   throw_unless(31, slice_hash(ca) == slice_hash(cb));
   return begin_cell()
-    .store_dict(merge_list(list_a, list_b))
-    .store_slice(ca)
-  .end_cell();
+          .store_dict(merge_list(list_a, list_b))
+          .store_slice(ca)
+          .end_cell();
 }
 
 int get_lock_timeout() method_id {
-  ;; (_, _, _, _, _, _, int spend_delay) = unpack_state();
-  return 1;
+  (_, _, _, _, _, _, int spend_delay) = unpack_state();
+  return spend_delay;
 }
