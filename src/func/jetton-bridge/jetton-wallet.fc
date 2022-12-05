@@ -161,7 +161,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
   slice response_address = in_msg_body~load_msg_addr();
-  ;; ignore custom payload
+  ;; we parse custom payload in `recv_internal`
   ;; slice custom_payload = in_msg_body~load_dict();
   balance -= jetton_amount;
   (_, _, _, int state_flags, int bridge_burn_fee) = get_jetton_bridge_config();
