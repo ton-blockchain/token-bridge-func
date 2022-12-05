@@ -82,14 +82,6 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
     send_raw_message(msg.end_cell(), mode);
 }
 
-slice calculate_address_by_init_state(cell state_init) inline {
-    return begin_cell().store_uint(4, 3)
-        .store_int(-1, 8)
-        .store_uint(cell_hash(state_init), 256)
-        .end_cell()
-        .begin_parse();
-}
-
 (int, int) encode_number_to_text(int decimals, int radix) impure inline_ref {
     int len = 0;
     int value = 0;

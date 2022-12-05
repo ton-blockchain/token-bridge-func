@@ -29,7 +29,7 @@
             .store_uint(0, 1)
             .end_cell();
 
-    slice minter_address = calculate_address_by_init_state(jetton_minter_state_init);
+    slice minter_address = calculate_jetton_wallet_address(jetton_minter_state_init); ;; calculate minter address by init_state
     return (minter_address, jetton_minter_state_init);
 }
 
