@@ -63,10 +63,10 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
 
     ;; bridge_address_hash, oracles_address_hash, oracles, state_flags, burn_bridge_fee
     (int bridge_address_hash, _, _, _, _) = get_jetton_bridge_config();
-    (_, int sender_address_hash) = parse_std_addr(sender_address);
+    (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
     if (op == op::mint()) {
-        throw_unless(error::bridge_not_sender(), sender_address_hash == bridge_address_hash);
+        throw_unless(error::bridge_not_sender(), (sender_wc == -1) & (sender_address_hash == bridge_address_hash));
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
         cell master_msg = in_msg_body~load_ref();
@@ -90,7 +90,7 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
                 .store_uint(op, 32)
                 .store_uint(query_id, 64)
                 .store_ref(begin_cell().store_slice(in_msg_body_copy).end_cell())
-                .store_ref(wrapped_token_data);
+                .store_ref(content);
 
         builder msg = begin_cell()
                     .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
@@ -135,7 +135,7 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
 }
 
 (int, int, slice, cell, cell) get_jetton_data() method_id {
-    (int total_supply, cell wrapped_token_data, cell jetton_wallet_code,) = load_data();
+    (int total_supply, cell content, cell jetton_wallet_code) = load_data();
     cell content_dict = new_dict();
 
     (
@@ -144,7 +144,7 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
         int token_decimals,
         slice token_name,
         slice token_symbol
-    ) = unpack_wrapped_token_data(wrapped_token_data);
+    ) = unpack_wrapped_token_data(content);
     
     (int cl, int cv) = encode_number_to_text(token_decimals, 10);
     slice decimals_slice = begin_cell().store_uint(cv, cl * 8).end_cell().begin_parse();
