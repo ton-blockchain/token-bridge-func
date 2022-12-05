@@ -21,8 +21,8 @@
     );
 }
 
-() mint_tokens(slice to_address, cell jetton_wallet_code, int wallet_coins_amount, int mint_jetton_amount, slice response_address, int query_id, cell wrapped_token_data) impure {
-    cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code, wrapped_token_data);
+() mint_tokens(slice to_address, cell jetton_wallet_code, int wallet_coins_amount, int mint_jetton_amount, slice response_address, int query_id) impure {
+    cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
     slice to_wallet_address = calculate_jetton_wallet_address(state_init);
 
     cell msg_to_wallet = begin_cell()
@@ -72,7 +72,7 @@
         int wallet_coins_amount = in_msg_body~load_coins(); ;;wallet_coins_amount
         int mint_jetton_amount = in_msg_body~load_coins();
         slice response_address = in_msg_body~load_msg_addr();
-        mint_tokens(to_address, jetton_wallet_code, wallet_coins_amount, mint_jetton_amount, response_address, query_id, wrapped_token_data);
+        mint_tokens(to_address, jetton_wallet_code, wallet_coins_amount, mint_jetton_amount, response_address, query_id);
         save_data(total_supply + mint_jetton_amount, jetton_wallet_code, wrapped_token_data);
         return ();
     }
@@ -81,7 +81,7 @@
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         throw_unless(error::owner_not_sender(),
-            equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code, wrapped_token_data), sender_address)
+            equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
         save_data(total_supply - jetton_amount, jetton_wallet_code, wrapped_token_data);
 
@@ -143,7 +143,7 @@
 
 slice get_wallet_address(slice owner_address) method_id {
     (int total_supply, cell jetton_wallet_code, cell wrapped_token_data) = load_data();
-    return calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code, wrapped_token_data);
+    return calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code);
 }
 
 (int, int, int, slice, slice) get_wrapped_token_data() method_id {
