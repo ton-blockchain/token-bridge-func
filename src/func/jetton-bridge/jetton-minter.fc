@@ -150,11 +150,11 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
     slice decimals_slice = begin_cell().store_uint(cv, cl * 8).end_cell().begin_parse();
 
     (int chain_id_len, int chain_id_value) = encode_number_to_text(chain_id, 10);
-    ;; (int token_address_len, int token_address_value) = encode_number_to_text(token_address, 16);
+    (int token_address_len, int token_address_value) = encode_number_to_text(token_address, 16);
     slice token_address_slice = begin_cell()
                                     .store_uint(chain_id_value, chain_id_len * 8)
                                     .store_slice("/")
-    ;; .store_uint(token_address_value, token_address_len * 8)
+                                    .store_uint(token_address_value, token_address_len * 8)
                                 .end_cell()
                                 .begin_parse();
 
