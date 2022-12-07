@@ -86,18 +86,17 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
         );
         save_data(total_supply - jetton_amount, content, jetton_wallet_code);
 
-        builder new_body = begin_cell()
-                .store_uint(op, 32)
-                .store_uint(query_id, 64)
-                .store_ref(begin_cell().store_slice(in_msg_body_copy).end_cell())
-                .store_ref(content);
+        cell new_body = begin_cell()
+                .store_slice(in_msg_body_copy)
+                .store_ref(content)
+                .end_cell();
 
         builder msg = begin_cell()
                     .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
                     .store_uint(4, 3).store_int(-1, 8).store_uint(bridge_address_hash, 256)
                     .store_coins(0)
-                    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-                    .store_builder(new_body);
+                    .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                    .store_ref(new_body);
         raw_reserve(1000000000, 2); ;; reserve 1 toncoins for storage-fee
         send_raw_message(msg.end_cell(), 64);
 
@@ -134,6 +133,10 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
     throw(0xffff);
 }
 
+slice zero_address() {
+    return begin_cell().store_uint(0, 2).end_cell().begin_parse();
+}
+
 (int, int, slice, cell, cell) get_jetton_data() method_id {
     (int total_supply, cell content, cell jetton_wallet_code) = load_data();
     cell content_dict = new_dict();
@@ -165,7 +168,7 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
     
     cell content = begin_cell().store_uint(0, 8).store_dict(content_dict).end_cell();
 
-    return (total_supply, -1, my_address(), content, jetton_wallet_code);
+    return (total_supply, -1, zero_address(), content, jetton_wallet_code);
 
 }
 
