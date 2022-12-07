@@ -148,16 +148,16 @@ slice zero_address() {
         slice token_name,
         slice token_symbol
     ) = unpack_wrapped_token_data(content);
-    
-    (int cl, int cv) = encode_number_to_text(token_decimals, 10);
-    slice decimals_slice = begin_cell().store_uint(cv, cl * 8).end_cell().begin_parse();
 
-    (int chain_id_len, int chain_id_value) = encode_number_to_text(chain_id, 10);
-    (int token_address_len, int token_address_value) = encode_number_to_text(token_address, 16);
+    slice decimals_slice    = encode_number_to_text(token_decimals, 10);
+    ;; slice decimals_slice = begin_cell().store_uint(cv, cl * 8).end_cell().begin_parse();
+
+    slice chain_id_value      = encode_number_to_text(chain_id, 10);
+    slice token_address_value = encode_number_to_text(token_address, 16);
     slice token_address_slice = begin_cell()
-                                    .store_uint(chain_id_value, chain_id_len * 8)
+                                    .store_slice(chain_id_value)
                                     .store_slice("/")
-                                    .store_uint(token_address_value, token_address_len * 8)
+                                    .store_slice(token_address_value)
                                 .end_cell()
                                 .begin_parse();
 
@@ -165,7 +165,7 @@ slice zero_address() {
     content_dict~udict_set_ref(256, "decimals"H, pack_string(decimals_slice, null()));
     content_dict~udict_set_ref(256, "name"H, pack_string(token_name, null()));
     content_dict~udict_set_ref(256, "symbol"H, pack_string(token_symbol, null()));
-    
+
     cell content = begin_cell().store_uint(0, 8).store_dict(content_dict).end_cell();
 
     return (total_supply, -1, zero_address(), content, jetton_wallet_code);
