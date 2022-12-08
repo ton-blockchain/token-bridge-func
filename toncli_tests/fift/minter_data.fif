@@ -17,7 +17,7 @@ b>
 
 <b
   1 32 u, // chain id
-  0x3a5dbc1da61f21d08028544a4df121655cca69d0 256 u, // Token eth addr
+  0xf0d8c9578937bfda05bd4ed5f2cfa14e7cdc267a 256 u, // Token eth addr
   9 8 u, // 9 decimals
   <b
     "TEST TOKEN" $,

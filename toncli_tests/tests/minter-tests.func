@@ -24,7 +24,6 @@ _ verify_burn_jetton( int query_id, slice resp_dst, int msg_value, int forward_f
 	4) query_id matches request query_id
 	-}
 
-    set_test_bridge_conf();
 	tuple parsed_msg = unsafe_tuple( parse_internal_message( msg ) );
 
 	;;Check dst_addr to be equal to resp_dst

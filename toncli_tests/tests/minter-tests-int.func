@@ -78,7 +78,8 @@ int __test_get_jetton_data_burn() {
 	slice jetton_addr = my_address(); ;;In testing mode my_address() for test code equals  my_address() for contract code
 	slice sender      = generate_internal_address_with_custom_data( 0, 0, random() );
 	slice src	      = calculate_user_jetton_wallet_address( sender, jetton_addr, code );
-	var msg_body      = generate_jetton_burn_notification( query_id, burn_amount, sender, admin );
+    slice dst_addr    = generate_eth_addr();
+	var msg_body      = generate_bridge_burn_notification( query_id, burn_amount, sender, my_address(), dst_addr);
 	cell msg          = generate_internal_message_custom( 0, 0, 0, msg_body, src, null(), 0);
 
 	( int gas_burn, _ ) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
