@@ -27,3 +27,19 @@ jetton_wallet:
   tests:
     - tests/wallet-tests.func
     - tests/wallet-tests-int.func
+
+jetton_bridge:
+  data: fift/bridge_data.fif
+  func:
+    - func/utils/helpers.func
+    - ../src/func/jetton-bridge/op-codes.fc
+    - ../src/func/jetton-bridge/params.fc
+    - ../src/func/jetton-bridge/errors.fc
+    - ../src/func/jetton-bridge/utils.fc
+    - ../src/func/jetton-bridge/config.fc
+    - ../src/func/jetton-bridge/discovery-params.fc
+    - ../src/func/jetton-bridge/jetton-bridge.fc
+  tests:
+    - tests/bridge-tests.fc
+
+
