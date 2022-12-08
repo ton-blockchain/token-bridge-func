@@ -2,6 +2,7 @@
 
 #include "utils/constants.func";
 #include "utils/op-codes.func";
+#include "utils/helpers.func";
 
 ( int, slice, slice, cell ) load_test_data() inline {
 
