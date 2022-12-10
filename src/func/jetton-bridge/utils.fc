@@ -1,15 +1,3 @@
-cell pack_string(slice a, slice b) {
-    builder result = begin_cell().store_uint(0, 8).store_slice(a);
-    if (~ null?(b)) {
-        if (slice_bits(a) + slice_bits(b) <= (1023 - 8)) {
-            result = result.store_slice(b);
-        } else {
-            result = result.store_ref(begin_cell().store_slice(b).end_cell());
-        }
-    }
-    return result.end_cell();
-}
-
 cell pack_jetton_wallet_data(int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {
     return  begin_cell()
             .store_coins(balance)
@@ -48,6 +36,27 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
     return calculate_address_by_state_init(calculate_jetton_wallet_state_init(owner_address, jetton_master_address, jetton_wallet_code));
 }
 
+() send_receipt_message(addr, ans_tag, query_id, body, grams, mode) impure inline_ref {
+    ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+    var msg = begin_cell()
+            .store_uint(0x18, 6)
+            .store_slice(addr)
+            .store_grams(grams)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(ans_tag, 32)
+            .store_uint(query_id, 64);
+    if (body >= 0) {
+        msg~store_uint(body, 256);
+    }
+    send_raw_message(msg.end_cell(), mode);
+}
+
+;; LIMITS:
+;; chainId: uint32 (it seems EVM chainId is uint256, but for our cases 32 bits is enough https://chainlist.org/)
+;; token address in EVM network: 160 bit (an Ethereum address is a 42-character hexadecimal address derived from the last 20 bytes of the public key controlling the account with 0x appended in front. e.g., 0x71C7656EC7ab88b098defB751B7401B5f6d8976F - https://info.etherscan.com/what-is-an-ethereum-address)
+;; decimals: uint8 (ERC-20 has uint8 decimals - https://eips.ethereum.org/EIPS/eip-20)
+;; name: 1023 - 8 = 1015 bit (see `pack_metadata_value`)
+;; symbol: 1023 - 8 = 1015 bit (see `pack_metadata_value`)
 (int, int, int, slice, slice) unpack_wrapped_token_data(cell data) inline {
     slice slice_data = data.begin_parse();
 
@@ -74,19 +83,9 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
     );
 }
 
-() send_receipt_message(addr, ans_tag, query_id, body, grams, mode) impure inline_ref {
-    ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
-    var msg = begin_cell()
-    .store_uint(0x18, 6)
-    .store_slice(addr)
-    .store_grams(grams)
-    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-    .store_uint(ans_tag, 32)
-    .store_uint(query_id, 64);
-    if (body >= 0) {
-        msg~store_uint(body, 256);
-    }
-    send_raw_message(msg.end_cell(), mode);
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#data-serialization
+cell pack_metadata_value(slice a) inline {
+    return begin_cell().store_uint(0, 8).store_slice(a).end_cell();
 }
 
 slice encode_number_to_text(int decimals, int radix) {
@@ -114,7 +113,6 @@ slice encode_number_to_text(int decimals, int radix) {
         str     = str.store_uint(chars.at(ctr - 1), 8);
         ctr    -= 1;
     }
-
 
     return str.end_cell().begin_parse();
 }
