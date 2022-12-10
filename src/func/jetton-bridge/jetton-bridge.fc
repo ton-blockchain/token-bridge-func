@@ -1,20 +1,21 @@
-;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell
-(slice, cell, cell) load_data() inline_ref {
+;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell queries
+(slice, cell, cell, cell) load_data() inline_ref {
     slice slice_data = get_data().begin_parse();
-    return (slice_data~load_msg_addr(), slice_data~load_ref(), slice_data~load_ref());
+    return (slice_data~load_msg_addr(), slice_data~load_ref(), slice_data~load_ref(), slice_data~load_dict());
 }
 
-() save_data(slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) impure inline_ref {
+() save_data(slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) impure inline_ref {
     set_data(begin_cell()
         .store_slice(collector_address)
         .store_ref(jetton_minter_code)
         .store_ref(jetton_wallet_code)
+        .store_dict(queries)
         .end_cell()
     );
 }
 
 (slice, cell) calculate_minter_address(cell wrapped_token_data) impure inline_ref {
-    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
 
     cell jetton_minter_data = begin_cell()
             .store_coins(0) ;; total_supply
@@ -92,12 +93,13 @@
 }
 
 () execute_voting (slice oracles_address, slice voting_data, int query_id) impure {
-    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
 
     int op = voting_data~load_uint(8);
 
     throw_if(error::unknown_execute_voting_op(),
         (op != op::execute_voting::swap()) &
+        (op != op::execute_voting::clear_queries()) &
         (op != op::execute_voting::get_reward()) &
         (op != op::execute_voting::change_collector()));
 
@@ -152,10 +154,25 @@
         send_raw_message(msg.end_cell(), 128); ;; send all the remainings
 
     } elseif (op == op::execute_voting::change_collector()) {
+
         collector_address = voting_data~load_msg_addr();
+
+    } elseif (op ==  op::execute_voting::clear_queries()) {
+
+        int bound = voting_data~load_uint(64); ;; clean up records expired more than X seconds ago
+        do {
+            var (queries', i, _, f) = queries.udict_delete_get_min(64);
+            f~touch();
+            if (f) {
+                f = (i < bound);
+            }
+            if (f) {
+                queries = queries';
+            }
+        } until (~ f);
     }
 
-    save_data(collector_address, jetton_minter_code, jetton_wallet_code);
+    save_data(collector_address, jetton_minter_code, jetton_wallet_code, queries);
 }
 
 () emit_log_simple (int event_id, slice data) impure inline {
@@ -192,7 +209,28 @@
 
     if (op == op::execute_voting()) {
         throw_unless(error::oracles_not_sender(), (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
-        execute_voting(sender_address, in_msg_body, query_id); 
+
+        if (in_msg_body.preload_int(8) == op::execute_voting::swap()) {
+            (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
+            queries = queries.udict_set(64, query_id, in_msg_body);
+            save_data(collector_address, jetton_minter_code, jetton_wallet_code, queries);
+        } else {
+            execute_voting(sender_address, in_msg_body, query_id);
+        }
+
+    } elseif (op ==  op::execute_swap()) {
+
+        throw_unless(399, msg_value >= bridge_burn_fee);
+        (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
+        (slice query, int found) = queries~udict_delete_get?(64, query_id);
+        throw_unless(400, found);
+        slice oracles_address = begin_cell().store_uint(4, 3)
+                .store_int(-1, 8)
+                .store_uint(oracles_address_hash, 256)
+                .end_cell()
+                .begin_parse();
+        execute_voting(oracles_address, query, query_id);
+
     } elseif (op == op::burn_notification()) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -235,7 +273,13 @@ slice get_minter_address(cell wrapped_token_data) method_id {
 }
 
 (int, int, cell, cell) get_bridge_data() method_id {
-    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
+    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
     (int wc, int addr) = parse_std_addr(collector_address);
     return (wc, addr, jetton_minter_code, jetton_wallet_code);
+}
+
+int has_query(int query_id) {
+    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
+    (slice query, int found) = queries.udict_get?(64, query_id);
+    return found;
 }
