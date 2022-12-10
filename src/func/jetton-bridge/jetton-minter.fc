@@ -3,6 +3,7 @@
 ;; 6905(computational_gas_price) * 1000(cur_gas_price) = 6905000
 ;; ceil(6905000) = 10000000 ~= 0.01 TON
 int provide_address_gas_consumption() asm "10000000 PUSHINT";
+int minter_min_tons_for_storage() asm "10000000 PUSHINT"; ;; 0.01 TON
 
 ;; storage scheme
 ;; storage#_ total_supply:Coins content:^Cell jetton_wallet_code:^Cell = Storage;
@@ -27,7 +28,7 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
 
 () mint_tokens(slice to_address, cell jetton_wallet_code, int amount, cell master_msg) impure {
     cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
-    slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+    slice to_wallet_address = calculate_address_by_state_init(state_init);
     var msg = begin_cell()
             .store_uint(0x18, 6)
             .store_slice(to_wallet_address)
@@ -62,17 +63,26 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
     (int total_supply, cell content, cell jetton_wallet_code) = load_data();
 
     ;; bridge_address_hash, oracles_address_hash, oracles, state_flags, burn_bridge_fee
-    (int bridge_address_hash, _, _, _, _) = get_jetton_bridge_config();
+    (int bridge_address_hash, int oracles_address_hash, _, _, _) = get_jetton_bridge_config();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
     if (op == op::mint()) {
         throw_unless(error::bridge_not_sender(), (sender_wc == -1) & (sender_address_hash == bridge_address_hash));
         slice to_address = in_msg_body~load_msg_addr();
         int amount = in_msg_body~load_coins();
-        cell master_msg = in_msg_body~load_ref();
-        slice master_msg_cs = master_msg.begin_parse();
-        master_msg_cs~skip_bits(32 + 64); ;; op + query_id
-        int jetton_amount = master_msg_cs~load_coins();
+        int jetton_amount = in_msg_body~load_coins();
+        int forward_coins_amount = in_msg_body~load_coins();
+
+        cell master_msg = begin_cell()
+                .store_uint(op::internal_transfer(), 32)
+                .store_uint(query_id, 64) ;;query id
+                .store_coins(jetton_amount)
+                .store_slice(my_address())
+                .store_slice(create_address(-1, oracles_address_hash)) ;;multisig_address
+                .store_coins(forward_coins_amount) ;;forward_coins_amounts
+                .store_uint(0, 1) ;; no forward_payload
+                .end_cell();
+
         mint_tokens(to_address, jetton_wallet_code, amount, master_msg);
         save_data(total_supply + jetton_amount, content, jetton_wallet_code);
         return ();
@@ -91,14 +101,16 @@ int provide_address_gas_consumption() asm "10000000 PUSHINT";
                 .store_ref(content)
                 .end_cell();
 
+        int rest_amount = pair_first(get_balance()) - minter_min_tons_for_storage();
+
         builder msg = begin_cell()
                     .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
                     .store_uint(4, 3).store_int(-1, 8).store_uint(bridge_address_hash, 256)
-                    .store_coins(0)
+                    .store_coins(rest_amount)
                     .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                     .store_ref(new_body);
-        raw_reserve(1000000000, 2); ;; reserve 1 toncoins for storage-fee
-        send_raw_message(msg.end_cell(), 64);
+
+        send_raw_message(msg.end_cell(), 0);
 
         return ();
     }

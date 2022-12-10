@@ -53,7 +53,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   throw_unless(706, balance >= 0);
 
   cell state_init = calculate_jetton_wallet_state_init(to_owner_address, jetton_master_address, jetton_wallet_code);
-  slice to_wallet_address = calculate_jetton_wallet_address(state_init);
+  slice to_wallet_address = calculate_address_by_state_init(state_init);
   slice response_address = in_msg_body~load_msg_addr();
   cell custom_payload = in_msg_body~load_dict();
   int forward_ton_amount = in_msg_body~load_coins();

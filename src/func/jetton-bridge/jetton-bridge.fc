@@ -30,7 +30,7 @@
             .store_uint(0, 1)
             .end_cell();
 
-    slice minter_address = calculate_jetton_wallet_address(jetton_minter_state_init); ;; calculate minter address by init_state
+    slice minter_address = calculate_address_by_state_init(jetton_minter_state_init); ;; calculate minter address by init_state
     return (minter_address, jetton_minter_state_init);
 }
 
@@ -42,7 +42,8 @@
     slice to_address,
     int mint_jetton_amount,
     slice multisig_address,
-    int query_id
+    int query_id,
+    int msg_value
 ) impure {
     slice slice_forward_coins_amounts = forward_coins_amounts.begin_parse();
     (
@@ -55,6 +56,10 @@
         slice_forward_coins_amounts~load_coins()
     );
 
+    throw_unless(405, msg_value >= minter_coins_amount);
+    throw_unless(406, minter_coins_amount >= wallet_coins_amount + forward_coins_amount);
+    throw_unless(407, wallet_coins_amount >= forward_coins_amount);
+
 ;;     slice wrapped_token_data_slice = wrapped_token_data.begin_parse();
 ;;     wrapped_token_data_slice~skip_bits(32 + 256);
 ;;     int decimals = wrapped_token_data_slice.preload_uint(8);
@@ -63,22 +68,13 @@
 
     (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
-    cell msg_to_wallet = begin_cell()
-            .store_uint(op::internal_transfer(), 32)
-            .store_uint(query_id, 64) ;;query id
-            .store_coins(mint_jetton_amount)
-            .store_slice(minter_address);;from_address
-            .store_slice(multisig_address) ;;multisig_address
-            .store_coins(0) ;;forward_coins_amounts
-            .store_uint(0, 1) ;; no forward_payload
-            .end_cell();
-
     cell master_msg = begin_cell() ;; mint tokens to wallet address
         .store_uint(op::mint(), 32)
         .store_uint(query_id, 64)
         .store_slice(to_address)
         .store_coins(wallet_coins_amount)
-        .store_ref(msg_to_wallet)
+        .store_coins(mint_jetton_amount)
+        .store_coins(forward_coins_amount) ;;forward_coins_amounts
         .end_cell();
 
     var msg = begin_cell()
@@ -92,7 +88,7 @@
     send_raw_message(msg.end_cell(), 1); ;; pay transfer fees separately, revert on errors
 }
 
-() execute_voting (slice oracles_address, slice voting_data, int query_id) impure {
+() execute_voting (slice oracles_address, slice voting_data, int query_id, int msg_value) impure {
     (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
 
     int op = voting_data~load_uint(8);
@@ -139,7 +135,8 @@
             to_wallet_address,
             mint_jetton_amount,
             oracles_address, ;; multisig_address
-            query_id
+            query_id,
+            msg_value
         );
 
     } elseif (op == op::execute_voting::get_reward()) {
@@ -215,7 +212,7 @@
             queries = queries.udict_set(64, query_id, in_msg_body);
             save_data(collector_address, jetton_minter_code, jetton_wallet_code, queries);
         } else {
-            execute_voting(sender_address, in_msg_body, query_id);
+            execute_voting(sender_address, in_msg_body, query_id, msg_value);
         }
 
     } elseif (op ==  op::execute_swap()) {
@@ -229,7 +226,7 @@
                 .store_uint(oracles_address_hash, 256)
                 .end_cell()
                 .begin_parse();
-        execute_voting(oracles_address, query, query_id);
+        execute_voting(oracles_address, query, query_id, msg_value);
 
     } elseif (op == op::burn_notification()) {
         int jetton_amount = in_msg_body~load_coins();

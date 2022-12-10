@@ -28,7 +28,7 @@ cell calculate_jetton_wallet_state_init(slice owner_address, slice jetton_master
             .end_cell();
 }
 
-slice calculate_jetton_wallet_address(cell state_init) inline {
+slice calculate_address_by_state_init(cell state_init) inline {
     return begin_cell().store_uint(4, 3)
             .store_int(workchain(), 8)
             .store_uint(cell_hash(state_init), 256)
@@ -36,8 +36,16 @@ slice calculate_jetton_wallet_address(cell state_init) inline {
             .begin_parse();
 }
 
+slice create_address(int wc, int address_hash) inline {
+    return begin_cell().store_uint(4, 3)
+            .store_int(wc, 8)
+            .store_uint(address_hash, 256)
+            .end_cell()
+            .begin_parse();
+}
+
 slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {
-    return calculate_jetton_wallet_address(calculate_jetton_wallet_state_init(owner_address, jetton_master_address, jetton_wallet_code));
+    return calculate_address_by_state_init(calculate_jetton_wallet_state_init(owner_address, jetton_master_address, jetton_wallet_code));
 }
 
 (int, int, int, slice, slice) unpack_wrapped_token_data(cell data) inline {
@@ -51,7 +59,7 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
         cell token_symbol
     ) = (
         slice_data~load_uint(32),
-        slice_data~load_uint(256),
+        slice_data~load_uint(160),
         slice_data~load_uint(8),
         slice_data~load_ref(),
         slice_data~load_ref()
@@ -80,33 +88,6 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
     }
     send_raw_message(msg.end_cell(), mode);
 }
-
-{-
-(int, int) encode_number_to_text(int decimals, int radix) impure inline_ref {
-    int len = 0;
-    int value = 0;
-    int mult = 1;
-
-    throw_if(error::unknown_radix(), (radix != 10) & (radix != 16));
-
-    do {
-        int base = 48;
-            (decimals, int res) = decimals.divmod(radix);
-        if (res < 10) {
-            value = value + (res + base) * mult;
-            mult = mult * 256;
-            len = len + 1;
-        } elseif (res >= 10) {
-            base += 39; ;; 7 + 26 + 6 skip capital letters and symbols
-            value = value + (res + base) * mult;
-            mult = mult * 256;
-            len = len + 1;
-        }
-    } until (decimals == 0);
-
-    return (len, value);
-}
--}
 
 slice encode_number_to_text(int decimals, int radix) {
 
