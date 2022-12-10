@@ -1,0 +1,207 @@
+#pragma version >=0.2.0;
+
+#include "utils/constants.func";
+#include "utils/op-codes.func";
+#include "utils/helpers.func";
+
+
+
+int __test_bridge_burn_notification_not_minter() {
+
+    slice admin_address = set_test_bridge_conf();
+
+	int query_id = rand( 12345 ) + 1;
+	int burn_amount = one_unit;
+    ;; Looking up
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code = stack.third();
+    cell wallet_code = stack.fourth();
+
+	;; Making sure that source address would be valid jetton address
+    cell content   = test_minter_content();
+
+	slice sender   = generate_internal_address_with_custom_data(0, 0, random());
+    (slice src, _) = test_calculate_minter_address(content, wallet_code, minter_code);
+    slice  bad_src = src.generate_different_addr();
+
+     {-
+      This is what usually comming to the jetton-minter and then forwarded to bridge.
+      When doing so, minter content is attached as a ref cell
+    -}
+
+
+    slice eth_dst = generate_eth_addr();
+	var msg_body  = generate_bridge_burn_notification( query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
+    var body_sc   = msg_body.end_cell().begin_parse();
+
+	cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, bad_src, null(), 0);
+
+    ;; Non-minter address should fail
+	(int gas_fail ) = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, body_sc]);
+
+    ;; New message with correct src should succeed
+    msg                   = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
+	(int gas_success, _ ) = invoke_method(recv_internal, [one_unit, one_unit, msg, body_sc]);
+
+    return gas_init + gas_fail + gas_success;
+
+}
+
+int __test_bridge_burn_notification_success() {
+
+    slice admin_address = set_test_bridge_conf();
+
+	int query_id    = rand( 12345 ) + 1;
+	int burn_amount = one_unit;
+    ;; Looking up
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code = stack.third();
+    cell wallet_code = stack.fourth();
+
+	;; Making sure that source address would be valid jetton address
+    cell content   = test_minter_content();
+
+	slice sender   = generate_internal_address_with_custom_data(0, 0, random());
+    (slice src, _) = test_calculate_minter_address(content, wallet_code, minter_code);
+
+     {-
+      This is what usually comming to the jetton-minter and then forwarded to bridge.
+      When doing so, minter content is attached as a ref cell
+    -}
+
+
+    slice eth_dst = generate_eth_addr();
+	var msg_body  = generate_bridge_burn_notification(query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
+
+	cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
+
+	(int gas_used, _) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+
+    tuple actions = parse_c5();
+
+    ;; Expect excess and log messages
+    throw_if(300, actions.null?());
+    throw_unless(301, actions.tuple_length() == 2);
+
+    ;; Testing that action is a message and message mode is 2
+    tuple excess = actions.first();
+    throw_unless(302, excess.first()  == 0);
+    throw_unless(303, excess.third()  == 2);
+
+    ;; Testing excess message body values
+    excess.second().verify_bridge_excess(400, query_id, my_address(), one_unit);
+
+    tuple log = actions.second();
+    throw_unless(500, log.first() == 0);
+    throw_unless(500, log.third() == 0);
+
+    log.second().assert_log_message(300, 0xc0470ccf, eth_dst.preload_uint(160), burn_amount, test_token_addr);
+
+    return gas_init + gas_used;
+}
+
+int __test_bridge_voting_not_oracle() {
+
+    set_test_bridge_conf();
+
+	int query_id = rand( 12345 ) + 1;
+
+    slice oracle_addr = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    slice not_oracle  = oracle_addr.generate_different_addr();
+
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code = stack.third();
+    cell wallet_code = stack.fourth();
+    cell content     = test_minter_content();
+    cell fwd         = generate_fwd_coins(rand(10) * one_unit, rand(10) * one_unit, rand(10) * one_unit);
+
+    int addr_hash    = random();
+    int mint_amount  = (rand(10) + 1) * one_unit;
+
+    var vote_req     = generate_bridge_voting_swap(query_id, random(),
+                                                   rand(1 << 16), 0,
+                                                   addr_hash, mint_amount,
+                                                   content, fwd);
+    var vote_sc      = vote_req.end_cell().begin_parse();
+
+    ;; Should fail since source is not oracle
+    cell msg         = generate_internal_message_custom(0, 0, 0, vote_req, not_oracle, null(), 0);
+    int gas_fail     = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, vote_sc]);
+
+    msg              = generate_internal_message_custom(0, 0, 0, vote_req, oracle_addr, null(), 0);
+    var (gas_success,
+                  _) = invoke_method(recv_internal, [one_unit, one_unit, msg, vote_sc]);
+
+    return gas_init + gas_fail + gas_success;
+}
+
+int __test_bridge_voting_mint() {
+    set_test_bridge_conf();
+
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code = stack.third();
+    cell wallet_code = stack.fourth();
+    cell content     = test_minter_content();
+
+    int minter_coins = one_unit * (rand(10) + 1);
+    int wallet_coins = one_unit * (rand(10) + 1);
+    int fwd_coins    = 0;
+
+    cell fwd         = generate_fwd_coins(minter_coins, wallet_coins, fwd_coins);
+
+    int addr_hash    = random();
+    int wc           = 0;
+    int query_id     = rand(12345) + 1;
+    int mint_amount  = (rand(10) + 1) * one_unit;
+
+    var vote_req     = generate_bridge_voting_swap(query_id, random(),
+                                                   rand(1 << 16), wc,
+                                                   addr_hash, mint_amount,
+                                                   content, fwd);
+
+    var vote_sc      = vote_req.end_cell().begin_parse();
+    slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    cell msg         = generate_internal_message_custom(0, 0, 0, vote_req, oracle, null(), 0);
+
+    var (gas_mint,_) = invoke_method(recv_internal, [one_unit, one_unit, msg, vote_sc]);
+
+    ;; Expect single
+    tuple actions    = parse_c5();
+    throw_if(300, actions.null?());
+    throw_unless(301, actions.tuple_length() == 1);
+
+    tuple mint = actions.first();
+    throw_unless(302, mint.first() == 0);
+    throw_unless(303, mint.third() == 1);
+
+    tuple parsed = mint.second().parse_internal_message().unsafe_tuple();
+
+    var (slice to_addr, mint_init) =  test_calculate_minter_address(content, wallet_code, minter_code);
+
+    throw_unless(304, equal_slices(to_addr, parsed.at(4)));
+    throw_unless(305, minter_coins == parsed.at(5));
+
+    ;; Checking mint message
+    var bs = parsed.at(8);
+    throw_unless(306, op::mint() == bs~load_uint(32));
+    throw_unless(307, query_id   == bs~load_uint(64));
+
+    slice wallet_addr = generate_internal_address_with_custom_data(0, wc, addr_hash);
+    throw_unless(308, equal_slices(wallet_addr, bs~load_msg_addr()));
+    throw_unless(309, wallet_coins == bs~load_grams());
+
+    ;; Checking wallet internal transfer message
+    var ws = bs~load_ref().begin_parse();
+    throw_unless(310, op::internal_transfer() == ws~load_uint(32));
+    throw_unless(311, query_id                == ws~load_uint(64));
+    throw_unless(312, mint_amount             == ws~load_grams());
+    throw_unless(313, equal_slices(to_addr, ws~load_msg_addr()));
+    throw_unless(314, equal_slices(oracle,  ws~load_msg_addr()));
+    throw_unless(315, fwd_coins == ws~load_grams());
+
+    return gas_init + gas_mint;
+}

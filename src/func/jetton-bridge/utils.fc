@@ -42,7 +42,7 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
 
 (int, int, int, slice, slice) unpack_wrapped_token_data(cell data) inline {
     slice slice_data = data.begin_parse();
-    
+
     (
         int chain_id,
         int token_address,
@@ -56,7 +56,7 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
         slice_data~load_ref(),
         slice_data~load_ref()
     );
-   
+
     return (
         chain_id,
         token_address,
@@ -81,13 +81,14 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
     send_raw_message(msg.end_cell(), mode);
 }
 
+{-
 (int, int) encode_number_to_text(int decimals, int radix) impure inline_ref {
     int len = 0;
     int value = 0;
     int mult = 1;
 
     throw_if(error::unknown_radix(), (radix != 10) & (radix != 16));
-    
+
     do {
         int base = 48;
             (decimals, int res) = decimals.divmod(radix);
@@ -100,8 +101,39 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
             value = value + (res + base) * mult;
             mult = mult * 256;
             len = len + 1;
-        } 
+        }
     } until (decimals == 0);
-    
+
     return (len, value);
+}
+-}
+
+slice encode_number_to_text(int decimals, int radix) {
+
+    throw_if(error::unknown_radix(), (radix != 10) & (radix != 16));
+    builder str = begin_cell();
+    int hex? = ( radix == 16 );
+    int ctr  = hex? ? 2 : 0;
+    tuple chars =  empty_tuple();
+
+    do {
+        (decimals, int rem) = decimals /% radix;
+
+        chars~tpush( rem >= 10 ? 87 + rem : 48 + rem);
+        ctr += 1;
+    } until (decimals == 0);
+
+    if ( hex? ) {
+        chars~tpush(120);
+        chars~tpush(48);
+    }
+
+    repeat( ctr ) {
+        int chr = chars.at(ctr - 1);
+        str     = str.store_uint(chars.at(ctr - 1), 8);
+        ctr    -= 1;
+    }
+
+
+    return str.end_cell().begin_parse();
 }
