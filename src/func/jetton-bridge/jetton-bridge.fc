@@ -73,8 +73,8 @@
         .store_uint(query_id, 64)
         .store_slice(to_address)
         .store_coins(wallet_coins_amount)
-        .store_coins(mint_jetton_amount)
-        .store_coins(forward_coins_amount) ;;forward_coins_amounts
+        .store_coins(mint_jetton_amount) ;; max ~588 bit
+        .store_coins(forward_coins_amount)
         .end_cell();
 
     var msg = begin_cell()

@@ -17,7 +17,7 @@
 
     int state_flags = slice_config~load_uint(8);
     
-    int burn_bridge_fee = slice_config~load_coins();
+    int burn_bridge_fee = slice_config~load_coins(); ;; ATTENTION: bridge_fee must include burn network fees (at least 2 * fwd_fee + 3 * gas_consumption)
 
     return (bridge_address_hash, oracles_address_hash, oracles, state_flags, burn_bridge_fee);
 }

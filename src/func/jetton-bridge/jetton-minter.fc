@@ -5,6 +5,10 @@
 int provide_address_gas_consumption() asm "10000000 PUSHINT";
 int minter_min_tons_for_storage() asm "10000000 PUSHINT"; ;; 0.01 TON
 
+slice zero_address() inline {
+    return begin_cell().store_uint(0, 2).end_cell().begin_parse();
+}
+
 ;; storage scheme
 ;; storage#_ total_supply:Coins content:^Cell jetton_wallet_code:^Cell = Storage;
 
@@ -75,12 +79,12 @@ int minter_min_tons_for_storage() asm "10000000 PUSHINT"; ;; 0.01 TON
 
         cell master_msg = begin_cell()
                 .store_uint(op::internal_transfer(), 32)
-                .store_uint(query_id, 64) ;;query id
-                .store_coins(jetton_amount)
-                .store_slice(my_address())
-                .store_slice(create_address(-1, oracles_address_hash)) ;;multisig_address
-                .store_coins(forward_coins_amount) ;;forward_coins_amounts
-                .store_uint(0, 1) ;; no forward_payload
+                .store_uint(query_id, 64)
+                .store_coins(jetton_amount) ;; max 653 bit
+                .store_slice(zero_address()) ;; from_address, 2 bit
+                .store_slice(create_address(-1, oracles_address_hash)) ;; response_address, 3 + 8 + 256 = 267 bit
+                .store_coins(forward_coins_amount) ;; forward_amount, 4 bit if zero
+                .store_uint(0, 1) ;; no forward_payload, 1 bit
                 .end_cell();
 
         mint_tokens(to_address, jetton_wallet_code, amount, master_msg);
@@ -143,10 +147,6 @@ int minter_min_tons_for_storage() asm "10000000 PUSHINT"; ;; 0.01 TON
     }
 
     throw(0xffff);
-}
-
-slice zero_address() inline {
-    return begin_cell().store_uint(0, 2).end_cell().begin_parse();
 }
 
 (int, int, slice, cell, cell) get_jetton_data() method_id {
