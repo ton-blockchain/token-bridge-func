@@ -145,7 +145,7 @@ int minter_min_tons_for_storage() asm "10000000 PUSHINT"; ;; 0.01 TON
     throw(0xffff);
 }
 
-slice zero_address() {
+slice zero_address() inline {
     return begin_cell().store_uint(0, 2).end_cell().begin_parse();
 }
 
@@ -164,15 +164,17 @@ slice zero_address() {
     slice decimals_slice = encode_number_to_text(token_decimals, 10);
     slice chain_id_value = encode_number_to_text(chain_id, 10);
     slice token_address_value = encode_number_to_text(token_address, 16);
-    slice uri_slice = begin_cell() ;; max (232 + 80 + 24 + 320) = 656 bits
+    builder uri_builder = begin_cell() ;; max (232 + 80 + 24 + 320) = 656 bits
             .store_slice("https://bridge.ton.org/token/") ;; 29 chars (232 bits)
             .store_slice(chain_id_value) ;; max 10 chars (80 bits)
             .store_slice("/0x") ;; 24 bits
-            .store_slice(token_address_value) ;; 40 chars (320 bits)
-            .end_cell()
-            .begin_parse();
+            .store_slice(token_address_value); ;; 40 chars (320 bits)
+
+    slice uri_slice = uri_builder.store_slice(".json").end_cell().begin_parse();
+    slice image_slice = uri_builder.store_slice(".png").end_cell().begin_parse();
 
     content_dict~udict_set_ref(256, "uri"H, pack_metadata_value(uri_slice));
+    content_dict~udict_set_ref(256, "image"H, pack_metadata_value(image_slice));
     content_dict~udict_set_ref(256, "decimals"H, pack_metadata_value(decimals_slice));
     content_dict~udict_set_ref(256, "name"H, pack_metadata_value(token_name));
     content_dict~udict_set_ref(256, "symbol"H, pack_metadata_value(token_symbol));
