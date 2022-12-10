@@ -2,7 +2,6 @@
 int error::inbound_message_has_empty_body() asm "200 PUSHINT";
 int error::unknown_op() asm "0xffff PUSHINT";
 int error::unknown_execute_voting_op() asm "211 PUSHINT";
-int error::unknown_radix() asm "212 PUSHINT";
 
 ;; data errors
 int error::incorrect_voting_data() asm "320 PUSHINT";
