@@ -160,6 +160,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
+  throw_unless(703, jetton_amount > 0);
   slice response_address = in_msg_body~load_msg_addr();
   ;; we parse custom payload in `recv_internal`
   ;; slice custom_payload = in_msg_body~load_dict();
@@ -168,15 +169,15 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   throw_unless(704, state_flags == 0);
   throw_unless(705, equal_slices(owner_address, sender_address));
   throw_unless(706, balance >= 0);
-  throw_unless(707, msg_value > 2 * fwd_fee + 2 * gas_consumption() + bridge_burn_fee);
+  throw_unless(707, msg_value >= bridge_burn_fee);
 
   var msg_body = begin_cell()
-          .store_uint(op::burn_notification(), 32)
-          .store_uint(query_id, 64)
-          .store_coins(jetton_amount)
-          .store_slice(owner_address)
-          .store_slice(response_address)
-          .store_uint(destination_address, 160)
+          .store_uint(op::burn_notification(), 32) ;; 32 bit
+          .store_uint(query_id, 64) ;; 64 bit
+          .store_coins(jetton_amount) ;; max 393 bit
+          .store_slice(owner_address) ;; 3 + 8 + 256 = 267 bit
+          .store_slice(response_address) ;; 3 + 8 + 256 = 267 bit
+          .store_uint(destination_address, 160) ;; 160 bit
           .end_cell();
 
   var msg = begin_cell()

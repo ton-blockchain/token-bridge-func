@@ -1,0 +1,4 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+
+<b 1000000000000000000000000000400000000 Gram, bbits .s
