@@ -159,6 +159,10 @@ int my_chain_id() asm "1 PUSHINT";
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
+    if (op == op::excesses()) {
+        return (); ;; just accept coins
+    }
+
     throw_if(error::unknown_op(), (op != op::burn_notification()) & (op != op::execute_voting()) & (op != op::execute_swap()));
 
     slice sender_address = cs~load_msg_addr();
