@@ -40,7 +40,7 @@ slice zero_address() inline {
             .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
             .store_ref(state_init)
             .store_ref(master_msg);
-    send_raw_message(msg.end_cell(), 0); ;; pay transfer fees separately, revert on errors
+    send_raw_message(msg.end_cell(), 0); ;; revert on errors
 }
 
 () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
