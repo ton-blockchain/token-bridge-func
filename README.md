@@ -37,6 +37,18 @@ Jettons:
 
    `throw_unless(703, jetton_amount > 0);` - forbid zero burns;
 
+* `jetton-minter.fc` - same with `jetton-minter-discoverable.fc` but:
+
+    * no `admin_address` in data - admin is `bridge_address` from network config
+
+    * mint - different mint message structure, sending fees deducted from message
+
+    * `burn_notification` with `content` is forwarded to the jetton-bridge, no burn response message is sent
+
+    * no `change_admin`, `change_content`
+
+    * `get_jetton_data` constructs semi-chain data in runtime
+
 Bridge:
 
 * `config.fc` - similar, but `uint8 state_flags` and `Coins burn_bridge_fee` added.
