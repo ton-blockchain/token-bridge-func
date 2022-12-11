@@ -54,14 +54,14 @@ int my_chain_id() asm "1 PUSHINT";
             int addr_hash,
             int mint_jetton_amount,
             cell wrapped_token_data,
-            cell forward_coins_amounts
+            int forward_coins_amount
         ) = (
             voting_data~load_uint(256),
             voting_data~load_int(16),
             voting_data~load_uint(256),
             voting_data~load_coins(), ;; max 124 bits
             voting_data~load_ref(),
-            voting_data~load_ref()
+            voting_data~load_coins()
         );
 
         voting_data.end_parse();
@@ -76,18 +76,8 @@ int my_chain_id() asm "1 PUSHINT";
 
         slice to_wallet_address = create_address(0, addr_hash);
 
-        slice slice_forward_coins_amounts = forward_coins_amounts.begin_parse();
-        (
-                int wallet_coins_amount,
-                int forward_coins_amount
-        ) = (
-                slice_forward_coins_amounts~load_coins(),
-                slice_forward_coins_amounts~load_coins()
-        );
-
         ;; msg_value >= bridge_burn_fee checked in `recv_internal`
-        throw_unless(406, msg_value > wallet_coins_amount + forward_coins_amount);
-        throw_unless(407, wallet_coins_amount > forward_coins_amount);
+        throw_unless(407, msg_value > forward_coins_amount);
 
         (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
@@ -95,7 +85,6 @@ int my_chain_id() asm "1 PUSHINT";
                 .store_uint(op::mint(), 32)
                 .store_uint(query_id, 64)
                 .store_slice(to_wallet_address) ;; 3 + 8 + 256 = 267 bit
-                .store_coins(wallet_coins_amount) ;; max 124 bit
                 .store_coins(mint_jetton_amount) ;; max 124 bit
                 .store_coins(forward_coins_amount) ;; max 124 bit
                 .end_cell();
@@ -103,12 +92,12 @@ int my_chain_id() asm "1 PUSHINT";
         var msg = begin_cell()
                 .store_uint(0x18, 6)
                 .store_slice(minter_address)
-                .store_coins(msg_value)
+                .store_coins(0)
                 .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
                 .store_ref(jetton_minter_state_init)
                 .store_ref(master_msg);
 
-        send_raw_message(msg.end_cell(), 0); ;; revert on errors
+        send_raw_message(msg.end_cell(), 64); ;; revert on errors
 
     } elseif (op == op::execute_voting::get_reward()) {
 

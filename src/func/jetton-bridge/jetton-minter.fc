@@ -73,7 +73,9 @@ slice zero_address() inline {
     if (op == op::mint()) {
         throw_unless(error::bridge_not_sender(), (sender_wc == -1) & (sender_address_hash == bridge_address_hash));
         slice to_address = in_msg_body~load_msg_addr();
-        int amount = in_msg_body~load_coins();
+
+        int rest_amount = pair_first(get_balance()) - minter_min_tons_for_storage();
+
         int jetton_amount = in_msg_body~load_coins();
         int forward_coins_amount = in_msg_body~load_coins();
 
@@ -87,7 +89,7 @@ slice zero_address() inline {
                 .store_uint(0, 1) ;; no forward_payload, 1 bit
                 .end_cell();
 
-        mint_tokens(to_address, jetton_wallet_code, amount, master_msg);
+        mint_tokens(to_address, jetton_wallet_code, rest_amount, master_msg);
         save_data(total_supply + jetton_amount, content, jetton_wallet_code);
         return ();
     }
