@@ -164,7 +164,7 @@ int my_chain_id() asm "1 PUSHINT";
     slice sender_address = cs~load_msg_addr();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
-    (_, int oracles_address_hash, _, _, int bridge_burn_fee) = get_jetton_bridge_config();
+    (_, int oracles_address_hash, _, _, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
 
     if (op == op::execute_voting()) {
         throw_unless(error::oracles_not_sender(), (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
@@ -180,7 +180,7 @@ int my_chain_id() asm "1 PUSHINT";
 
     } elseif (op == op::execute_swap()) {
 
-        throw_unless(399, msg_value >= bridge_burn_fee);
+        throw_unless(399, msg_value >= bridge_mint_fee);
         (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
         (cell query, int found) = queries.udict_get_ref?(64, query_id);
         throw_unless(400, found);
