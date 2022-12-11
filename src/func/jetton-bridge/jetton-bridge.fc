@@ -112,11 +112,13 @@ int my_chain_id() asm "1 PUSHINT";
 
     } elseif (op == op::execute_voting::get_reward()) {
 
+        slice reward_address = voting_data~load_msg_addr();
+
         ;; reserve 100 Toncoins for storage fees
         raw_reserve(100000000000, 2);
         var msg = begin_cell()
                 .store_uint(0x18, 6) ;; #int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddressInt = 0 1 1 0 00
-                .store_slice(oracles_address)
+                .store_slice(reward_address)
                 .store_grams(0)
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
         send_raw_message(msg.end_cell(), 128); ;; send all the remainings
