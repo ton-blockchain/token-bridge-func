@@ -174,7 +174,7 @@ int gas_consumption() asm "10000000 PUSHINT"; ;; 0.01 TON
   var msg_body = begin_cell()
           .store_uint(op::burn_notification(), 32) ;; 32 bit
           .store_uint(query_id, 64) ;; 64 bit
-          .store_coins(jetton_amount) ;; max 393 bit
+          .store_coins(jetton_amount) ;; max 124 bit
           .store_slice(owner_address) ;; 3 + 8 + 256 = 267 bit
           .store_slice(response_address) ;; 3 + 8 + 256 = 267 bit
           .store_uint(destination_address, 160) ;; 160 bit

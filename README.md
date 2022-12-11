@@ -21,4 +21,26 @@ Bridge supports all ERC-20-compatible tokens with:
 
 ## Architecture
 
-Token bridge based on code of [Toncoin Bridge](https://github.com/ton-blockchain/bridge-func) and [Standard Jetton](https://github.com/ton-blockchain/token-contract).
+Token bridge based on code of [Toncoin Bridge](https://github.com/ton-blockchain/bridge-func/tree/81e4e0d53b288b0f07855e9d779d227e3dc1c94a) and [Standard Jetton](https://github.com/ton-blockchain/token-contract/tree/2d411595a4f25fba43997a2e140a203c140c728a).
+
+Jettons:
+
+* `dicovery-params.fc`, `op-codes.fc`, `params.fc`, `stdlib.fc`, `utils.fc` - same.
+
+* `jetton-wallet.fc` - same, but `uint160 destination_address` (destination address in EVM network) added in `custom_payload` of `burn` message and to `burn_notification` message.
+
+   3 additional `burn` checks:
+
+   `throw_unless(704, state_flags == 0);` - bridge work mode flag;
+
+   `throw_unless(707, msg_value >= bridge_burn_fee);` - `bridge_burn_fee` must include network fees ;
+
+   `throw_unless(703, jetton_amount > 0);` - forbid zero burns;
+
+Bridge:
+
+* `config.fc` - similar, but `uint8 state_flags` and `Coins burn_bridge_fee` added.
+
+* `multisig.fc` - same, only another config number.
+
+* `votes-collector.fc` - same, only another config number.

@@ -63,6 +63,7 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
         slice_data~load_uint(160),
         slice_data~load_uint(8)
     );
+    slice_data.end_parse();
 
     return (
         chain_id,
