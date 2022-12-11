@@ -51,31 +51,23 @@ slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_mas
 ;; chainId: uint32 (it seems EVM chainId is uint256, but for our cases 32 bits is enough https://chainlist.org/)
 ;; token address in EVM network: 160 bit (an Ethereum address is a 42-character hexadecimal address derived from the last 20 bytes of the public key controlling the account with 0x appended in front. e.g., 0x71C7656EC7ab88b098defB751B7401B5f6d8976F - https://info.etherscan.com/what-is-an-ethereum-address)
 ;; decimals: uint8 (ERC-20 has uint8 decimals - https://eips.ethereum.org/EIPS/eip-20)
-;; name: 1023 - 8 = 1015 bit (see `pack_metadata_value`)
-;; symbol: 1023 - 8 = 1015 bit (see `pack_metadata_value`)
-(int, int, int, slice, slice) unpack_wrapped_token_data(cell data) inline {
+(int, int, int) unpack_wrapped_token_data(cell data) inline {
     slice slice_data = data.begin_parse();
 
     (
         int chain_id,
         int token_address,
-        int token_decimals,
-        cell token_name,
-        cell token_symbol
+        int token_decimals
     ) = (
         slice_data~load_uint(32),
         slice_data~load_uint(160),
-        slice_data~load_uint(8),
-        slice_data~load_ref(),
-        slice_data~load_ref()
+        slice_data~load_uint(8)
     );
 
     return (
         chain_id,
         token_address,
-        token_decimals,
-        token_name.begin_parse(),
-        token_symbol.begin_parse()
+        token_decimals
     );
 }
 
