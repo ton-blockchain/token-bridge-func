@@ -7,9 +7,10 @@
     return (0, 0);
   }
   slice ds = bridge_config.begin_parse();
-  if (ds.slice_bits() < 512) {
+  if (ds.slice_bits() < 512 + 8) {
     return (0, 0);
   }
+  int prefix = ds~load_uint(8);
   ;; wc always equals to -1
   int bridge_address = ds~load_uint(256);
   int oracles_address = ds~load_uint(256);
