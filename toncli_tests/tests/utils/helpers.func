@@ -36,22 +36,11 @@ cell test_minter_content() inline {
     1 32 u, // chain id
      0xf0d8c9578937bfda05bd4ed5f2cfa14e7cdc267a 256 u, // Token eth addr
     9 8 u, // 9 decimals
-    <b
-      "TEST TOKEN" $,
-    b> ref,
-    <b
-      "TST" $,
-    b> ref,
   b>
 -}
-    cell name = begin_cell().store_slice("TEST TOKEN").end_cell();
-    cell sym  = begin_cell().store_slice("TST").end_cell();
-
     return begin_cell().store_uint(1, 32)
-                       .store_uint(test_token_addr, 256)
+                       .store_uint(test_token_addr, 160)
                        .store_uint(9, 8)
-                       .store_ref(name)
-                       .store_ref(sym)
            .end_cell();
 
 }
@@ -120,19 +109,19 @@ cell generate_fwd_coins(int minter, int wallet, int forward) {
 
 }
 
-builder generate_bridge_voting_swap(int query_id, int chash,
-                                    int idx, int wc,
+builder generate_bridge_voting_swap(int op,
+                                    int query_id, int chash,
+                                    int idx,
                                     int addr, int amount,
-                                    cell token_data, cell fwd) {
+                                    cell token_data, int fwd) {
 
-    return generate_internal_message_body(op::execute_voting(), query_id).store_uint(op::execute_voting::swap(), 8)
+    return generate_internal_message_body(op, query_id).store_uint(op::execute_voting::swap(), 8)
                                                                          .store_uint(chash, 256)
                                                                          .store_uint(idx, 16)
-                                                                         .store_uint(wc, 8)
                                                                          .store_uint(addr, 256)
                                                                          .store_grams(amount)
                                                                          .store_ref(token_data)
-                                                                         .store_ref(fwd);
+                                                                         .store_grams(fwd);
 }
 
 _ verify_bridge_excess(cell msg, int code, int query_id, slice resp_dst, int msg_value) impure inline {
@@ -162,7 +151,8 @@ _ verify_bridge_excess(cell msg, int code, int query_id, slice resp_dst, int msg
 
 	throw_unless( code + 4, query_id == msg_body~load_uint(64));
 }
-_ assert_log_message(cell msg, int code, int event, int exp_dst, int jetton_amount, int token_addr) impure inline {
+
+_ assert_log_message(cell msg, int code, int event, int exp_dst, int jetton_amount, int token_addr, slice sender) impure inline {
 
 	tuple parsed_msg = unsafe_tuple(parse_external_message( msg ));
     tuple dst_ext    = parsed_msg.at(1).parse_addr();
@@ -171,10 +161,79 @@ _ assert_log_message(cell msg, int code, int event, int exp_dst, int jetton_amou
     slice bs = parsed_msg.at(5);
 
     throw_unless(code + 1, exp_dst == bs~load_uint(160));
-    throw_unless(code + 2, jetton_amount == bs~load_uint(64));
+    throw_unless(code + 2, jetton_amount == bs~load_grams());
     throw_unless(code + 3, token_addr == bs~load_uint(160));
-    throw_unless(code + 4, bs.slice_empty?());
+    throw_unless(code + 4, equal_slices(sender, bs~load_msg_addr()));
+    throw_unless(code + 5, bs.slice_empty?());
 
 }
 
+_ assert_vote_resp(int code, int query_id, slice oracle) {
 
+    ;; Expect single
+    tuple actions    = parse_c5();
+    throw_if(code, actions.null?());
+    throw_unless(code + 1, actions.tuple_length() == 1);
+
+    tuple mint = actions.first();
+    throw_unless(code + 2, mint.first() == 0);
+    throw_unless(code + 3, mint.third() == 64);
+
+    tuple parsed = mint.second().parse_internal_message().unsafe_tuple();
+
+    ;; var (slice to_addr, mint_init) =  test_calculate_minter_address(content, wallet_code, minter_code);
+
+    throw_unless(code + 4, equal_slices(oracle, parsed.at(4)));
+    ;; throw_unless(305, minter_coins == parsed.at(5));
+    throw_unless(code + 5, 0 == parsed.at(5));
+
+    ;; Checking mint message
+    var bs = parsed.at(8);
+    ;; throw_unless(306, op::mint() == bs~load_uint(32));
+    throw_unless(code + 6, 0x10000 + 9 == bs~load_uint(32));
+    throw_unless(code + 7, query_id    == bs~load_uint(64));
+    throw_unless(code + 8, 0           == bs.preload_uint(256));
+
+
+}
+
+int send_execute_voting(int query_id, int msg_value, int addr_hash, int mint_amount, int fwd, slice src_addr, int exp_fail?) impure inline_ref {
+
+    int gas_vote  = 0;
+    var vote_req  = generate_bridge_voting_swap(op::execute_voting(),
+                                                   query_id, random(),
+                                                   rand(1 << 16),
+                                                   addr_hash, mint_amount,
+                                                   test_minter_content(), fwd);
+
+    var vote_sc   = vote_req.end_cell().begin_parse();
+    cell msg      = generate_internal_message_custom(0, 0, 0, vote_req, src_addr, null(), 0);
+
+    if ( exp_fail? ) {
+        gas_vote      = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, vote_sc]);
+    }
+    else {
+        (gas_vote, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, vote_sc]);
+    }
+
+    return gas_vote;
+
+}
+
+int send_execute_swap(int query_id, int msg_value, slice src_addr, int exp_fail?) impure inline_ref {
+    int gas_exec = 0;
+
+    var exec_req = generate_internal_message_body(op::execute_swap(), query_id);
+    var exec_sc  = exec_req.end_cell().begin_parse();
+
+    cell msg     = generate_internal_message_custom(0, 0, 0, exec_req, src_addr, null(), 0);
+
+    if ( exp_fail? ) {
+        gas_exec      = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, exec_sc]);
+    }
+    else {
+        (gas_exec, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, exec_sc]);
+    }
+
+    return gas_exec;
+}
