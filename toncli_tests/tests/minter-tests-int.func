@@ -10,6 +10,7 @@ int __test_get_jetton_data_mint() {
 
 	int total_supply = stack.first();
 	int mintable?    = stack.second();
+
 	;; slice admin      = stack.third();
 	cell content     = stack.fourth();
 	cell code        = stack.at( 4 );
@@ -20,29 +21,30 @@ int __test_get_jetton_data_mint() {
 		return gas_before;
 	}
 
-	int query_id     = rand(1337) + 1;
-	int forward_ton  = one_unit / 10;
-	int mint_amount  = ( rand( 100 ) + 1 ) * one_unit / 10;
-	slice rand_addr  = generate_internal_address_with_custom_data(0, 0, random());
-	slice mint_dst   = generate_internal_address_with_custom_data(0, 0, random());
-	slice mint_from  = generate_empty_address();
-	cell mint_payload = generate_jetton_internal_transfer_request( query_id, mint_amount, mint_from, rand_addr, forward_ton, null(), false ).end_cell();
-	builder mint_body = generate_internal_message_body( op_mint, query_id ).store_slice( mint_dst ).store_grams( forward_ton ).store_ref( mint_payload );
-	;; Testing mint with non-admin address
+	int query_id      = rand(1337) + 1;
+	int forward_ton   = one_unit / 10;
+	int mint_amount   = ( rand( 100 ) + 1 ) * one_unit / 10;
+    int msg_val       = one_unit;
+	slice rand_addr   = generate_internal_address_with_custom_data(0, 0, random());
+	slice mint_dst    = generate_internal_address_with_custom_data(0, 0, random());
+	slice mint_from   = generate_empty_address();
+	cell mint_payload = generate_jetton_internal_transfer_request( query_id, mint_amount, mint_from, admin, forward_ton, null(), false ).end_cell();
+	builder mint_body = generate_internal_message_body( op_mint, query_id ).store_slice(mint_dst).store_grams(mint_amount).store_grams(forward_ton);
 	cell msg          = generate_internal_message_custom( 0, 0, 0,  mint_body, admin, null(), 0 );
 
-	var( gas_mint, _ ) = invoke_method( recv_internal, [ one_unit, one_unit, msg, mint_body.end_cell().begin_parse() ] );
+	var( gas_mint, _ ) = invoke_method( recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
 	var( gas_after, stack ) = invoke_method( get_jetton_data, [] );
 	;; Total supply should increase by our mint_amount
 	throw_unless( 500, total_supply + mint_amount == stack.first() );
 
 	;; Rest should not change
 
-	throw_unless( 501, mintable? == stack.second() );
-	;; throw_unless( 502, equal_slices( admin, stack.third() ) );
-	throw_unless( 502, equal_slices( generate_empty_address(), stack.third() ) );
-	throw_unless( 503, equal_slices( content.begin_parse(), stack.fourth().begin_parse() ) );
-	throw_unless( 504, equal_slices( code.begin_parse(), stack.at( 4 ).begin_parse() ) );
+	throw_unless( 501, mintable? == stack.second());
+	;; throw_unless( 502, equal_slices( admin, stack.third()));
+	throw_unless(502, equal_slices(generate_empty_address(), stack.third()));
+	throw_unless(503, equal_slices(content.begin_parse(), stack.fourth().begin_parse()));
+	throw_unless(504, equal_slices(code.begin_parse(), stack.at( 4 ).begin_parse()));
+    throw_unless(505, msg_val - jetton_min_storage);
 
 
 	return gas_before + gas_mint + gas_after;

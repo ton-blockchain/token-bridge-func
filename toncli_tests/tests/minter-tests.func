@@ -30,7 +30,7 @@ _ verify_burn_jetton( int query_id, slice resp_dst, int msg_value, int forward_f
 	throw_unless( 701, equal_slices( resp_dst, parsed_msg.at( 4 ) ) );
 
 	int total_sent  = parsed_msg.at( 5 );
-	int should_sent = msg_value - forward_amount - forward_fee * 2;
+	int should_sent = msg_value - jetton_min_storage;
 
 	throw_unless( 702, total_sent >= should_sent );
 
@@ -88,17 +88,16 @@ int __test_burn_notification() {
 	( int gas_used, _ ) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
 
 	tuple actions = parse_c5();
-	throw_unless( 600, actions.tuple_length() == 2 );
+	throw_unless( 600, actions.tuple_length() == 1 );
 
-    ;; Skiping first reserve action for now
-	( int action_type, cell sent_msg, int mode ) = actions.at(1).untriple();
+	( int action_type, cell sent_msg, int mode ) = actions.first().untriple();
 	throw_unless( 601, action_type == 0 );
-	throw_unless( 602, ( mode >= 64 ) & ( mode <= 66 ) );
+	throw_unless( 602, mode == 0 );
 
 	;; it's mode 64 so msg_value - fees return guaranteed
 	;; Still have to verify excess structure
 
-	verify_burn_jetton( query_id, admin_address, 0, 0, 0, sent_msg );
+	verify_burn_jetton( query_id, admin_address, one_unit, 0, 0, sent_msg );
 
 	var( new_supply, _, _ ) = load_test_data();
 
@@ -119,6 +118,7 @@ int __test_mint() {
 	int query_id     = rand(1337) + 1;
 	int forward_ton  = one_unit / 10;
 	int mint_amount  = ( rand( 100 ) + 1 ) * one_unit / 10;
+    int msg_val      = one_unit;
 	slice rand_addr  = generate_internal_address_with_custom_data(0, 0, random());
 	slice mint_dst   = generate_internal_address_with_custom_data(0, 0, random());
 	slice mint_from  = generate_empty_address();
@@ -127,27 +127,36 @@ int __test_mint() {
 		In current implementation sends any forward payload provided.
 		However for jettons to be successfully creditated on wallet balance
 		it should have internal_transfer message format.
+
+        Bridge minter uses custom mint msg format:
+        dst_addr:MsgAddr
+        mint_amount:Grams
+        fwd_amount:Grams
 	-}
 
-	cell mint_payload = generate_jetton_internal_transfer_request( query_id, mint_amount, mint_from, rand_addr, forward_ton, null(), false ).end_cell();
-	builder mint_body = generate_internal_message_body( op_mint, query_id ).store_slice( mint_dst ).store_grams( forward_ton ).store_ref( mint_payload );
+    ;; Excpected payload to be forwarded to bridge
+	cell mint_payload = generate_jetton_internal_transfer_request(query_id, mint_amount, mint_from, admin_address, forward_ton, null(), false ).end_cell();
+    ;; Actual mint message body
+	builder mint_body = generate_internal_message_body(op_mint, query_id).store_slice(mint_dst)
+                                                                         .store_grams(mint_amount)
+                                                                         .store_grams(forward_ton);
 	;; Testing mint with non-admin address
 	cell msg          = generate_internal_message_custom( 0, 0, 0,  mint_body, rand_addr, null(), 0 );
 
-	int gas_failed    = invoke_method_expect_fail( recv_internal, [ one_unit, one_unit, msg, mint_body.end_cell().begin_parse() ] );
+	int gas_failed    = invoke_method_expect_fail( recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
 	assert_no_actions();
 
 	;;Now changing source address to admin
 	msg               = generate_internal_message_custom( 0, 0, 0,  mint_body, admin_address, null(), 0 );
 
-	var( gas_success, _ ) = invoke_method( recv_internal, [ one_unit, one_unit, msg, mint_body.end_cell().begin_parse() ] );
+	var( gas_success, _ ) = invoke_method( recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
 
 	;; Expect single message
 	tuple actions	    = parse_c5();
-	throw_unless( 600, actions.tuple_length() == 1 );
+	throw_unless(600, actions.tuple_length() == 1);
 
 	( int action_type, cell sent_msg, int mode ) = actions.at(0).untriple();
-	throw_unless( 601, action_type == 0 );
+	throw_unless(601, action_type == 0);
 
 	tuple parsed_msg = unsafe_tuple( parse_internal_message( sent_msg ) );
 
@@ -159,13 +168,14 @@ int __test_mint() {
 	  Rest is very contract specific.
 	-}
 
-	throw_if( 602, parsed_msg.at( 7 ).null?() );
-	throw_unless( 603, equal_slices( mint_payload.begin_parse(), parsed_msg.at( 8 ) ) );
+	throw_if(602, parsed_msg.at( 7 ).null?());
+	throw_unless(603, equal_slices(mint_payload.begin_parse(), parsed_msg.at(8)));
 
 	;; Also total supply should increase by mint_amount
 
 	var( new_supply, _, _ ) = load_test_data();
-	throw_unless( 604, total_supply + mint_amount == new_supply );
+	throw_unless(604, total_supply + mint_amount == new_supply);
+    throw_unless(605, msg_val - jetton_min_storage);
 
 	return gas_failed + gas_success;
 
