@@ -5,11 +5,20 @@ slice set_test_bridge_conf() impure inline_ref {
    int addr        = random();
    slice oc_addr   = begin_cell().store_uint(random(), 256).end_cell().begin_parse();
    cell oracle_tbl = udict_set(new_dict(), 256, random(), oc_addr);
-   cell new_conf   = begin_cell().store_uint(addr, 256)
+   cell prices     = begin_cell().store_grams(test_bridge_burn_fee)
+                                 .store_grams(test_bridge_mint_fee)
+                                 .store_grams(jetton_min_storage)
+                                 .store_grams(jetton_gas_fee)
+                                 .store_grams(jetton_min_storage)
+                                 .store_grams(discover_gas_fee)
+                     .end_cell();
+
+   cell new_conf   = begin_cell().store_uint(0, 8)
+                                 .store_uint(addr, 256)
                                  .store_uint(test_oracle_addr, 256) ;; Oracles addr
                                  .store_dict(oracle_tbl)
                                  .store_uint(0, 8)
-                                 .store_grams(test_bridge_burn_fee) ;; 0.1 fee
+                                 .store_ref(prices)
                                  .end_cell();
    cell config   = get_config();
 
