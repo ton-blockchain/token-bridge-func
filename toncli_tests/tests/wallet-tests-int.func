@@ -6,6 +6,8 @@
 
 int __test_get_wallet_data_transfer() {
 
+    set_test_bridge_conf();
+
 	var ( _, dst, resp_dst, query_id ) = setup_req_fields();
 	var ( gas_before, stack )          = invoke_method( get_wallet_data, [] );
 
@@ -50,6 +52,8 @@ int __test_get_wallet_internal_transfer() {
 	 When incoming transfer happens
 	 Balance should increase accordingly
 	-}
+
+    set_test_bridge_conf();
 
 	var ( _, dst, resp_dst, query_id ) = setup_req_fields();
 	var ( gas_before, stack )          = invoke_method( get_wallet_data, [] );
@@ -102,7 +106,7 @@ int __test_get_wallet_data_burn() {
 	int forward_amount   = one_unit / 10;
 	int forward_fee      = one_unit / 100;
 
-    cell bridge_payload  = begin_cell().store_uint(test_bridge_addr, 160).end_cell();
+    cell bridge_payload  = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 	var  msg_body        = generate_jetton_burn_request( query_id, burn_amount, resp_dst, bridge_payload );
 	cell msg             = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
 

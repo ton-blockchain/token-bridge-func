@@ -232,6 +232,8 @@ int transfer_test_msg_value( int msg_value, int forward_fee, int forward_amount,
 
 int __test_transfer_not_owner() {
 
+    set_test_bridge_conf();
+
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
 	slice non_owner  = gen_non_owner( owner );
@@ -253,6 +255,8 @@ int __test_transfer_not_owner() {
 }
 
 int __test_transfer_no_jettons() {
+
+    set_test_bridge_conf();
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
@@ -279,6 +283,9 @@ int __test_transfer_no_jettons() {
 }
 
 int __test_transfer_storage_fee() {
+
+    set_test_bridge_conf();
+
 	int transfer_fee   = jetton_gas_fee * 2;
 	int forward_fee    = one_unit / 10;
 	int forward_amount = one_unit / 4;
@@ -298,6 +305,9 @@ int __test_transfer_storage_fee() {
 
 
 int __test_transfer_jetton_gas_fee() {
+
+    set_test_bridge_conf();
+
 	int transfer_fee   = jetton_gas_fee * 2;
 	int forward_fee    = one_unit / 10;
 	int forward_amount = one_unit / 4;
@@ -316,6 +326,9 @@ int __test_transfer_jetton_gas_fee() {
 }
 
 int __test_transfer_forward_fee_once() {
+
+    set_test_bridge_conf();
+
 	int transfer_fee   = jetton_gas_fee * 2;
 	int forward_fee    = one_unit / 10;
 	int forward_amount = 0; ;;one_unit / 4;
@@ -334,6 +347,9 @@ int __test_transfer_forward_fee_once() {
 }
 
 int __test_transfer_forward_fee_twice() {
+
+    set_test_bridge_conf();
+
 	int transfer_fee   = jetton_gas_fee * 2;
 	int forward_fee    = one_unit / 10;
 	int forward_amount = one_unit / 4;
@@ -352,6 +368,9 @@ int __test_transfer_forward_fee_twice() {
 }
 
 int __test_transfer_forward_amount() {
+
+    set_test_bridge_conf();
+
 	int transfer_fee   = jetton_gas_fee * 2;
 	int forward_fee    = one_unit / 10;
 	int forward_amount = one_unit / 4;
@@ -370,6 +389,9 @@ int __test_transfer_forward_amount() {
 }
 
 int __test_transfer_excess() {
+
+    set_test_bridge_conf();
+
 	int transfer_fee   = jetton_gas_fee * 2;
 	int forward_fee    = one_unit / 10;
 	int forward_amount = one_unit / 4;
@@ -388,6 +410,8 @@ int __test_transfer_excess() {
 }
 
 int verify_successfull_transfer( int transfer_amount, int forward_amount, cell fwd_payload ) impure inline {
+
+
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
@@ -479,12 +503,18 @@ int verify_successfull_transfer( int transfer_amount, int forward_amount, cell f
 }
 
 int __test_transfer_success_no_fwd() {
+
+    set_test_bridge_conf();
+
 	int gas_used = verify_successfull_transfer( one_unit, 0, null() ); ;;Test without forward amount first
 
 	return gas_used;
 }
 
 int __test_transfer_success_with_fwd() {
+
+
+    set_test_bridge_conf();
 
 	cell payload = begin_cell().store_slice("Hop hey").end_cell();
 	;; 0.25 forward amount and some payload
@@ -502,12 +532,15 @@ int __test_transfer_success_with_fwd() {
 -}
 
 int burn_test_msg_value( int msg_value, int forward_fee, int expect_fail? ) impure inline {
+
+    set_test_bridge_conf();
+
 	;; Testing msg_value related cases
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 	int  gas_used  = 0;
 
     set_test_bridge_conf();
-    cell bridge_payload = begin_cell().store_uint(test_bridge_addr, 160).end_cell();
+    cell bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
 	var  msg_body  = generate_jetton_burn_request( query_id, get_test_balance() / 10, resp_dst, bridge_payload );
 	cell msg       = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), forward_fee );
@@ -525,10 +558,13 @@ int burn_test_msg_value( int msg_value, int forward_fee, int expect_fail? ) impu
 
 int __test_burn_not_owner() {
 
+
+    set_test_bridge_conf();
+
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
 	slice non_owner = gen_non_owner( owner );
-    cell  bridge_payload = begin_cell().store_uint(test_bridge_addr, 160).end_cell();
+    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
     set_test_bridge_conf();
 	var   msg_body  = generate_jetton_burn_request( query_id, one_unit * 5, resp_dst, bridge_payload ); ;;Burn 5 jetton units
@@ -548,12 +584,15 @@ int __test_burn_not_owner() {
 }
 
 int __test_burn_too_many() {
+
+    set_test_bridge_conf();
+
 	;; Testing case where user burns more jettons than available on balance
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
     set_test_bridge_conf();
 
-    cell  bridge_payload = begin_cell().store_uint(test_bridge_addr, 160).end_cell();
+    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
 	int balance    = get_test_balance();
 	var  msg_body  = generate_jetton_burn_request( query_id, balance + 1, resp_dst, bridge_payload ); ;;Burn balance + 1 jettons
@@ -571,24 +610,31 @@ int __test_burn_too_many() {
 	return gas_err + gas_success;
 }
 
-;; Double forward fee
 int __test_burn_no_gas() {
-	int burn_fee = test_bridge_burn_fee + jetton_gas_fee * 2;
-	int forward_fee = one_unit / 10;
-	int excess 	    = 1;
-	int msg_value   = 2 * muldiv(forward_fee, 3, 2) + excess; ;;Only forward fee and access no gas fee
 
     set_test_bridge_conf();
-	int gas_used = burn_test_msg_value( msg_value, forward_fee, true );
+
+	int forward_fee = one_unit / 10;
+	int excess 	    = 1;
+	int msg_value   = rand(test_bridge_burn_fee); ;; Lower than burn gas fee
+
+    set_test_bridge_conf();
+	int gas_used = burn_test_msg_value(msg_value, forward_fee, true);
 	assert_no_actions();
 	;; verifying error trigger
-	gas_used    += burn_test_msg_value( msg_value + burn_fee, forward_fee, false );
+	gas_used    += burn_test_msg_value(test_bridge_burn_fee, forward_fee, false);
 
 	return gas_used;
 
 }
 
+{-
+Now burn fee is single config constant not directly related to fwd fee and others
+
 int __test_burn_no_forward_fee() {
+
+    set_test_bridge_conf();
+
 	int burn_fee = test_bridge_burn_fee + jetton_gas_fee * 2;
 	int forward_fee = one_unit / 10;
 	int excess 	= 1;
@@ -605,6 +651,9 @@ int __test_burn_no_forward_fee() {
 }
 
 int __test_burn_no_excess() {
+
+    set_test_bridge_conf();
+
 	int burn_fee = test_bridge_burn_fee + jetton_gas_fee * 2;
 	int forward_fee = one_unit / 10;
 	int excess 	= 1;
@@ -620,7 +669,12 @@ int __test_burn_no_excess() {
 	return gas_used;
 }
 
+-}
+
 int __test_burn_successfull() {
+
+    set_test_bridge_conf();
+
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
 	int balance         = get_test_balance();
@@ -631,10 +685,10 @@ int __test_burn_successfull() {
 
     set_test_bridge_conf();
 
-    cell  bridge_payload = begin_cell().store_uint(test_bridge_addr, 160).end_cell();
-	var  msg_body       = generate_jetton_burn_request( query_id, burn_amount, resp_dst, bridge_payload );
-	cell msg            = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
-	var ( gas_used, _ ) = invoke_method( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
+    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
+	var  msg_body        = generate_jetton_burn_request( query_id, burn_amount, resp_dst, bridge_payload );
+	cell msg             = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
+	var ( gas_used, _ )  = invoke_method( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
 
 	;; Balance should decrease by burn amount
 	throw_unless( 502, balance - burn_amount == get_test_balance() );
@@ -654,6 +708,9 @@ int __test_burn_successfull() {
 }
 
 int __test_internal_transfer() {
+
+
+    set_test_bridge_conf();
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
