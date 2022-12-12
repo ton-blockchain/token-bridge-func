@@ -84,11 +84,16 @@ slice test_calculate_jetton_wallet_address(cell state_init) inline {
     return (minter_address, jetton_minter_state_init);
 }
 
-slice generate_eth_addr() {
+int   generate_eth_hash() inline {
     int min = (1 << 159) + 1;
     int max = 1 << 160;
 
-    return begin_cell().store_uint(rand(max - min) + min, 160).end_cell().begin_parse();
+    return rand(max - min) + min;
+}
+
+slice generate_eth_addr() inline {
+
+    return begin_cell().store_uint(generate_eth_hash(), 160).end_cell().begin_parse();
 }
 
 slice generate_different_addr(slice old) {
