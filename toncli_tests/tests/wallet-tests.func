@@ -590,8 +590,6 @@ int __test_burn_too_many() {
 	;; Testing case where user burns more jettons than available on balance
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
-    set_test_bridge_conf();
-
     cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
 	int balance    = get_test_balance();
@@ -626,6 +624,31 @@ int __test_burn_no_gas() {
 
 	return gas_used;
 
+}
+
+int __test_burn_zero() {
+    set_test_bridge_conf();
+
+	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
+
+    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
+
+	int balance    = get_test_balance();
+    int msg_value  = test_bridge_burn_fee;
+	var  msg_body  = generate_jetton_burn_request(query_id, 0, resp_dst, bridge_payload); ;;Burn 0 jettons
+	cell msg       = generate_internal_message_custom(0, 0, 0, msg_body, owner, null(), 0);
+
+    ;; Jetton burn amount 0 should fail
+	int gas_err    = invoke_method_expect_fail( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
+	assert_no_actions();
+
+    int burn_amount = rand(balance) + 1;
+    msg_body        = generate_jetton_burn_request(query_id, burn_amount, resp_dst, bridge_payload);
+	msg             = generate_internal_message_custom(0, 0, 0, msg_body, owner, null(), 0);
+
+    var (gas_succes, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, msg_body.end_cell().begin_parse()]);
+
+    return gas_err + gas_succes;
 }
 
 {-
