@@ -55,10 +55,27 @@ _ validate_TIP_64( slice content_data ) impure inline {
 	} else {
 		;; On-chain is stored as dict
 		;; Has to be non-empty
-		throw_if( 306, content_data.preload_dict().dict_empty?() );
+        cell meta = content_data.preload_dict();
+		throw_if(306, meta.dict_empty?());
 
-		;; Perhaps could go further and test for Optional dict keys but none of those are required so i'll leave it be
-		;; For now
+		;; Perhaps could go further and test for Optional dict keys
+        var (val, found?) = meta.udict_get_ref?(256, "uri"H);
+        slice vs = val.begin_parse();
+        throw_unless(307, found?);
+        throw_unless(308, vs~load_uint(8) == 0);
+        throw_unless(309, snake_equal?(vs, test_expected_url));
+
+        (val, found?) = meta.udict_get_ref?(256, "image"H);
+        throw_unless(310, found?);
+        vs = val.begin_parse();
+        throw_unless(311, vs~load_uint(8) == 0);
+        throw_unless(312, snake_equal?(vs, test_expected_img));
+
+        (val, found?) = meta.udict_get_ref?(256, "decimals"H);
+        throw_unless(313, found?);
+        vs = val.begin_parse();
+        throw_unless(314, vs~load_uint(8) == 0);
+        throw_unless(315, snake_equal?(vs, test_expected_dec));
 	}
 }
 
