@@ -1,6 +1,6 @@
 ;; bridge_address: MsgAdrr, oracles_address: MsgAddr, oracles: Dict, state_flags: uint8, burn_bridge_fee: Coins
 ;; Returns bridge address
-slice set_test_bridge_conf() impure inline_ref {
+slice set_bridge_conf_custom(int state) impure inline_ref {
 
    int addr        = random();
    slice oc_addr   = begin_cell().store_uint(random(), 256).end_cell().begin_parse();
@@ -17,7 +17,7 @@ slice set_test_bridge_conf() impure inline_ref {
                                  .store_uint(addr, 256)
                                  .store_uint(test_oracle_addr, 256) ;; Oracles addr
                                  .store_dict(oracle_tbl)
-                                 .store_uint(0, 8)
+                                 .store_uint(state, 8)
                                  .store_ref(prices)
                                  .end_cell();
    cell config   = get_config();
@@ -26,6 +26,12 @@ slice set_test_bridge_conf() impure inline_ref {
    set_global_config(config);
 
    return generate_internal_address_with_custom_data(0, -1, addr);
+
+}
+
+slice set_test_bridge_conf() impure inline {
+
+   return set_bridge_conf_custom(false);
 }
 
 cell test_minter_content() inline {

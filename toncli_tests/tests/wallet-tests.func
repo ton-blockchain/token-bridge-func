@@ -651,6 +651,29 @@ int __test_burn_zero() {
     return gas_err + gas_succes;
 }
 
+int __test_burn_state() {
+
+    set_bridge_conf_custom(1); ;; Setting bridge configuration state to 1;
+
+	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
+    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
+
+	int burn_amount = rand(get_test_balance()) + 1;
+    int msg_value   = test_bridge_burn_fee;
+	var  msg_body   = generate_jetton_burn_request(query_id, burn_amount, resp_dst, bridge_payload); ;;Burn 0 jettons
+    slice sc_body   = msg_body.end_cell().begin_parse();
+	cell msg        = generate_internal_message_custom(0, 0, 0, msg_body, owner, null(), 0);
+
+    ;; Jetton burn amount 0 should fail
+	int gas_err     = invoke_method_expect_fail(recv_internal, [ msg_value, msg_value, msg, sc_body]);
+	assert_no_actions();
+
+    set_bridge_conf_custom(0); ;; Now setting state to OK
+    var (gas_succes, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, sc_body]);
+
+    return gas_err + gas_succes;
+}
+
 {-
 Now burn fee is single config constant not directly related to fwd fee and others
 
