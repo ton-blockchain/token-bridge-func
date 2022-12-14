@@ -204,14 +204,18 @@ int my_chain_id() asm "1 PUSHINT";
         throw_unless(error::minter_not_sender(), equal_slices(minter_address, sender_address));
         (int chain_id, int token_address, _) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == my_chain_id());
+        throw_unless(410, chain_id == my_chain_id()); ;; can never happen
+
+        (int from_address_wc, int from_address_hash) = parse_std_addr(from_address);
+
+        throw_unless(413, from_address_wc == 0); ;; can never happen
 
         emit_log_simple(0xc0470ccf, 
-            begin_cell() ;; max 711 bit
+            begin_cell() ;; 704 bit
                     .store_uint(destination_address, 160)
-                    .store_coins(jetton_amount) ;; max 124 bits
+                    .store_uint(jetton_amount, 128) ;; max 124 bits
                     .store_uint(token_address, 160)
-                    .store_slice(from_address) ;; 3 + 8 + 256 = 267 bit
+                    .store_uint(from_address_hash, 256)
                     .end_cell()
         );
     }
