@@ -234,7 +234,7 @@ slice get_minter_address(cell wrapped_token_data) method_id {
     return (wc, addr, jetton_minter_code, jetton_wallet_code);
 }
 
-int has_query(int query_id) {
+int has_query(int query_id) method_id {
     (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code, cell queries) = load_data();
     (cell query, int found) = queries.udict_get_ref?(64, query_id);
     return found;

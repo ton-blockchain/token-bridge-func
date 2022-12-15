@@ -34,7 +34,7 @@ k 8 ufits { ."k must fit to 8-bit unsigned integer type" cr 1 halt } ifnot
 n 8 ufits { ."n must fit to 8-bit unsigned integer type" cr 1 halt } ifnot
 k n > { ."k must be <= n" cr 1 halt } if
 
-"build/jetton-bridge/multisig.fif" include constant code
+"multisig-code.fif" include constant code
 
 dictnew 0 pubkeys {
   uncons swap <b swap 256 u, 0 8 u,
