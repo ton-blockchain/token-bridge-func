@@ -158,7 +158,7 @@ _ verify_bridge_excess(cell msg, int code, int query_id, slice resp_dst, int msg
 	throw_unless( code + 4, query_id == msg_body~load_uint(64));
 }
 
-_ assert_log_message(cell msg, int code, int event, int exp_dst, int jetton_amount, int token_addr, slice sender) impure inline {
+_ assert_log_message(cell msg, int code, int event, int exp_dst, int jetton_amount, int token_addr, int sender) impure inline {
 
 	tuple parsed_msg = unsafe_tuple(parse_external_message( msg ));
     tuple dst_ext    = parsed_msg.at(1).parse_addr();
@@ -166,10 +166,10 @@ _ assert_log_message(cell msg, int code, int event, int exp_dst, int jetton_amou
 
     slice bs = parsed_msg.at(5);
 
-    throw_unless(code + 1, exp_dst == bs~load_uint(160));
-    throw_unless(code + 2, jetton_amount == bs~load_grams());
-    throw_unless(code + 3, token_addr == bs~load_uint(160));
-    throw_unless(code + 4, equal_slices(sender, bs~load_msg_addr()));
+    throw_unless(code + 1, exp_dst       == bs~load_uint(160));
+    throw_unless(code + 2, jetton_amount == bs~load_uint(128));
+    throw_unless(code + 3, token_addr    == bs~load_uint(160));
+    throw_unless(code + 4, sender        == bs~load_uint(256));
     throw_unless(code + 5, bs.slice_empty?());
 
 }
