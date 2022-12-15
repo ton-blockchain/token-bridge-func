@@ -226,20 +226,32 @@ int send_execute_voting(int query_id, int msg_value, int addr_hash, int mint_amo
 
 }
 
-int send_execute_swap(int query_id, int msg_value, slice src_addr, int exp_fail?) impure inline_ref {
-    int gas_exec = 0;
+int send_op(int op, builder body, int query_id, int msg_value, slice src_addr, int exp_fail?) impure inline_ref {
 
-    var exec_req = generate_internal_message_body(op::execute_swap(), query_id);
+    int gas_msg = 0;
+
+    var exec_req = generate_internal_message_body(op, query_id);
+
+    ifnot( body.null?() ) {
+        exec_req = exec_req.store_builder(body);
+    }
+
     var exec_sc  = exec_req.end_cell().begin_parse();
 
     cell msg     = generate_internal_message_custom(0, 0, 0, exec_req, src_addr, null(), 0);
 
     if ( exp_fail? ) {
-        gas_exec      = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, exec_sc]);
+        gas_msg      = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, exec_sc]);
     }
     else {
-        (gas_exec, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, exec_sc]);
+        (gas_msg, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, exec_sc]);
     }
 
-    return gas_exec;
+    return gas_msg;
+
+}
+
+int send_execute_swap(int query_id, int msg_value, slice src_addr, int exp_fail?) impure inline {
+
+    return send_op(op::execute_swap(), null(), query_id, msg_value, src_addr, exp_fail?);
 }
