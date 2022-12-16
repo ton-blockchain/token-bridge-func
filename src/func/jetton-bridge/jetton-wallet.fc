@@ -231,7 +231,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
 
   if (op == op::burn()) { ;; burn
     throw_unless(704, state_flags == 0);
-    throw_unless(707, msg_value >= bridge_burn_fee);
+    throw_unless(707, msg_value == bridge_burn_fee);
     slice custom_payload = in_msg_body~load_ref().begin_parse();
     int destination_address = custom_payload~load_uint(160); ;; destination address in other network
     burn_tokens(in_msg_body, sender_address, msg_value, fwd_fee, destination_address);
