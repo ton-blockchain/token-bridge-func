@@ -2,7 +2,7 @@
 "Asm.fif" include 
 "TonUtil.fif" include 
 
-"votes-collector.fif" include constant StateInit
+"build-collector.fif" include constant StateInit
 StateInit hashu 0 swap 2dup 2constant contract_addr
 ."new collector address = " 2dup .addr cr
 ."Non-bounceable address (for init): " 2dup 5 .Addr cr
