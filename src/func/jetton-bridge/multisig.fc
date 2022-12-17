@@ -24,7 +24,7 @@ _ unpack_state() inline_ref {
   return res;
 }
 
-_ pack_state(cell pending_queries, cell owner_infos, int last_cleaned, int k, int n, int wallet_id, int spend_delay) inline_ref {
+_ pack_state(cell pending_queries, cell owner_infos, int last_cleaned, int k, int n, int wallet_id, int lock_until) inline_ref {
   return begin_cell()
           .store_uint(wallet_id, 32)
           .store_uint(n, 8)
@@ -32,7 +32,7 @@ _ pack_state(cell pending_queries, cell owner_infos, int last_cleaned, int k, in
           .store_uint(last_cleaned, 64)
           .store_dict(owner_infos)
           .store_dict(pending_queries)
-          .store_uint(spend_delay,32)
+          .store_uint(lock_until, 32)
           .end_cell();
 }
 
@@ -107,10 +107,10 @@ _ unpack_owner_info(slice cs) inline_ref {
 
 () try_init() impure inline_ref {
   ;; first query without signatures is always accepted
-  (int wallet_id, int n, int k, int last_cleaned, cell owner_infos, cell pending_queries, int spend_delay) = unpack_state();
+  (int wallet_id, int n, int k, int last_cleaned, cell owner_infos, cell pending_queries, int lock_until) = unpack_state();
   throw_if(37, last_cleaned);
   accept_message();
-  set_data(pack_state(pending_queries, owner_infos, 1, k, n, wallet_id, spend_delay));
+  set_data(pack_state(pending_queries, owner_infos, 1, k, n, wallet_id, lock_until));
 }
 
 () recv_external() {
@@ -160,9 +160,9 @@ _ unpack_owner_info(slice cs) inline_ref {
   int root_hash = slice_hash(in_msg);
   int root_i = in_msg~load_uint(8);
 
-  (int wallet_id, int n, int k, int last_cleaned, cell owner_infos, cell pending_queries, int spend_delay) = unpack_state();
+  (int wallet_id, int n, int k, int last_cleaned, cell owner_infos, cell pending_queries, int lock_until) = unpack_state();
 
-  throw_unless(38, now() > spend_delay);
+  throw_unless(38, now() > lock_until);
   last_cleaned -= last_cleaned == 0;
 
   (slice owner_info, var found?) = owner_infos.udict_get?(8, root_i);
@@ -204,7 +204,7 @@ _ unpack_owner_info(slice cs) inline_ref {
   }
 
   (pending_queries, owner_infos) = update_pending_queries(pending_queries, owner_infos, msg, query_id, creator_i, cnt, cnt_bits, n, k);
-  set_data(pack_state(pending_queries, owner_infos, last_cleaned, k, n, wallet_id, spend_delay));
+  set_data(pack_state(pending_queries, owner_infos, last_cleaned, k, n, wallet_id, lock_until));
 
   int need_save = 0;
   ifnot (cell_null?(signatures) | (cnt >= k)) {
@@ -233,7 +233,7 @@ _ unpack_owner_info(slice cs) inline_ref {
   } until (~ f);
 
   if (need_save) {
-    set_data(pack_state(pending_queries, owner_infos, last_cleaned, k, n, wallet_id, spend_delay));
+    set_data(pack_state(pending_queries, owner_infos, last_cleaned, k, n, wallet_id, lock_until));
   }
 
   var cs = in_msg_cell.begin_parse();
@@ -270,8 +270,8 @@ int processed?(int query_id) method_id {
   return x;
 }
 
-cell create_init_state(int wallet_id, int n, int k, cell owners_info, int spend_delay) method_id {
-  return pack_state(new_dict(), owners_info, 0, k, n, wallet_id, spend_delay);
+cell create_init_state(int wallet_id, int n, int k, cell owners_info, int lock_until) method_id {
+  return pack_state(new_dict(), owners_info, 0, k, n, wallet_id, lock_until);
 }
 
 cell merge_list(cell a, cell b) {
@@ -379,6 +379,6 @@ cell merge_inner_queries(cell a, cell b) method_id {
 }
 
 int get_lock_timeout() method_id {
-  (_, _, _, _, _, _, int spend_delay) = unpack_state();
-  return spend_delay;
+  (_, _, _, _, _, _, int lock_until) = unpack_state();
+  return lock_until;
 }
