@@ -1,3 +1,6 @@
+const int CONFIG_PARAM_ID = 79;
+const int MY_CHAIN_ID = 1;
+
 int workchain() asm "0 PUSHINT";
 
 () force_chain(slice addr) impure {

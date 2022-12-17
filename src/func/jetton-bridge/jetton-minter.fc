@@ -9,11 +9,15 @@ slice zero_address() inline {
 
 (int, cell, cell) load_data() inline {
     slice ds = get_data().begin_parse();
-    return (
+
+    (int total_supply, cell content, cell jetton_wallet_code) = (
             ds~load_coins(), ;; total_supply
             ds~load_ref(), ;; content
             ds~load_ref() ;; jetton_wallet_code
     );
+    ds.end_parse();
+
+    return (total_supply, content, jetton_wallet_code);
 }
 
 () save_data(int total_supply, cell content, cell jetton_wallet_code) impure inline {
@@ -29,13 +33,13 @@ slice zero_address() inline {
     cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
     slice to_wallet_address = calculate_address_by_state_init(state_init);
     var msg = begin_cell()
-            .store_uint(0x18, 6)
+            .store_uint(BOUNCEABLE, 6)
             .store_slice(to_wallet_address)
             .store_coins(amount)
             .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
             .store_ref(state_init)
             .store_ref(master_msg);
-    send_raw_message(msg.end_cell(), 0); ;; revert on errors
+    send_raw_message(msg.end_cell(), SEND_MODE_REGULAR); ;; revert on errors
 }
 
 () recv_internal(int msg_value, cell in_msg_full, slice in_msg_body) impure {
@@ -73,6 +77,7 @@ slice zero_address() inline {
 
         int jetton_amount = in_msg_body~load_coins();
         int forward_coins_amount = in_msg_body~load_coins();
+        in_msg_body.end_parse();
 
         cell master_msg = begin_cell()
                 .store_uint(op::internal_transfer(), 32)
@@ -92,6 +97,7 @@ slice zero_address() inline {
     if (op == op::burn_notification()) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
+        in_msg_body.end_parse();
         throw_unless(error::owner_not_sender(),
                 equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
@@ -105,13 +111,13 @@ slice zero_address() inline {
         int rest_amount = pair_first(get_balance()) - minter_min_tons_for_storage;
 
         builder msg = begin_cell()
-                    .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
+                    .store_uint(NON_BOUNCEABLE, 6)
                     .store_uint(4, 3).store_int(-1, 8).store_uint(bridge_address_hash, 256)
                     .store_coins(rest_amount)
                     .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
                     .store_ref(new_body);
 
-        send_raw_message(msg.end_cell(), 0);
+        send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
 
         return ();
     }
@@ -121,13 +127,14 @@ slice zero_address() inline {
 
         slice owner_address = in_msg_body~load_msg_addr();
         int include_address? = in_msg_body~load_uint(1);
+        in_msg_body.end_parse();
 
         cell included_address = include_address?
                 ? begin_cell().store_slice(owner_address).end_cell()
                 : null();
 
         var msg = begin_cell()
-                .store_uint(0x18, 6)
+                .store_uint(BOUNCEABLE, 6)
                 .store_slice(sender_address)
                 .store_coins(0)
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
@@ -139,7 +146,7 @@ slice zero_address() inline {
         } else {
             msg = msg.store_uint(0, 2); ;; addr_none
         }
-        send_raw_message(msg.store_maybe_ref(included_address).end_cell(), 64);
+        send_raw_message(msg.store_maybe_ref(included_address).end_cell(), SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
         return ();
     }
 

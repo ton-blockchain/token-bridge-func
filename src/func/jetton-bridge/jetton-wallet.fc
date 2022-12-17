@@ -57,7 +57,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   throw_unless(708, slice_bits(in_msg_body) >= 1);
   slice either_forward_payload = in_msg_body;
   var msg = begin_cell()
-          .store_uint(0x18, 6)
+          .store_uint(BOUNCEABLE, 6)
           .store_slice(to_wallet_address)
           .store_coins(0)
           .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
@@ -84,7 +84,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   ;; by using this instead of fwd_fee
   ;; msg_fwd_fee(to_wallet, msg_body, state_init, 15)
 
-  send_raw_message(msg.end_cell(), 64); ;; revert on errors
+  send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE); ;; revert on errors
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
 }
 
@@ -128,30 +128,30 @@ This is suitable for most tokens, if you need tokens transferable between workch
             .end_cell();
 
     var msg = begin_cell()
-            .store_uint(0x10, 6) ;; we should not bounce here cause receiver can have uninitialized contract
+            .store_uint(NON_BOUNCEABLE, 6) ;; we should not bounce here cause receiver can have uninitialized contract
             .store_slice(owner_address)
             .store_coins(forward_ton_amount)
             .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_ref(msg_body);
 
-    send_raw_message(msg.end_cell(), 1);
+    send_raw_message(msg.end_cell(), SEND_MODE_PAY_FEES_SEPARETELY);
   }
 
   if ((response_address.preload_uint(2) != 0) & (msg_value > 0)) {
     var msg = begin_cell()
-            .store_uint(0x10, 6) ;; nobounce - int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 010000
+            .store_uint(NON_BOUNCEABLE, 6)
             .store_slice(response_address)
             .store_coins(msg_value)
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
             .store_uint(op::excesses(), 32)
             .store_uint(query_id, 64);
-    send_raw_message(msg.end_cell(), 2);
+    send_raw_message(msg.end_cell(), SEND_MODE_IGNORE_ERRORS);
   }
 
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
 }
 
-() burn_tokens (slice in_msg_body, slice sender_address, int msg_value, int fwd_fee, int destination_address) impure {
+() burn_tokens (slice in_msg_body, slice sender_address, int msg_value, int fwd_fee) impure {
   ;; NOTE we can not allow fails in action phase since in that case there will be
   ;; no bounce. Thus check and throw in computation phase.
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
@@ -159,8 +159,12 @@ This is suitable for most tokens, if you need tokens transferable between workch
   int jetton_amount = in_msg_body~load_coins();
   throw_unless(703, jetton_amount > 0);
   slice response_address = in_msg_body~load_msg_addr();
-  ;; we parse custom payload in `recv_internal`
-  ;; slice custom_payload = in_msg_body~load_dict();
+  cell custom_payload = in_msg_body~load_dict();
+  slice custom_payload_slice = custom_payload.begin_parse();
+  int destination_address = custom_payload_slice~load_uint(160); ;; destination address in other network
+  custom_payload_slice.end_parse();
+  in_msg_body.end_parse();
+
   balance -= jetton_amount;
   throw_unless(705, equal_slices(owner_address, sender_address));
   throw_unless(706, balance >= 0);
@@ -175,13 +179,13 @@ This is suitable for most tokens, if you need tokens transferable between workch
           .end_cell();
 
   var msg = begin_cell()
-          .store_uint(0x18, 6)
+          .store_uint(BOUNCEABLE, 6)
           .store_slice(jetton_master_address)
           .store_coins(0)
           .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
           .store_ref(msg_body);
 
-  send_raw_message(msg.end_cell(), 64);
+  send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
 
   save_data(balance, owner_address, jetton_master_address, jetton_wallet_code);
 }
@@ -232,9 +236,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   if (op == op::burn()) { ;; burn
     throw_unless(704, state_flags == 0);
     throw_unless(707, msg_value == bridge_burn_fee);
-    slice custom_payload = in_msg_body~load_ref().begin_parse();
-    int destination_address = custom_payload~load_uint(160); ;; destination address in other network
-    burn_tokens(in_msg_body, sender_address, msg_value, fwd_fee, destination_address);
+    burn_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
     return ();
   }
 

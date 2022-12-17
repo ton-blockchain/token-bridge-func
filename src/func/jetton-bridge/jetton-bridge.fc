@@ -1,5 +1,3 @@
-int my_chain_id() asm "1 PUSHINT";
-
 ;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell
 (slice, cell, cell) load_data() inline_ref {
     slice slice_data = get_data().begin_parse();
@@ -70,7 +68,7 @@ int my_chain_id() asm "1 PUSHINT";
                 int token_decimals
         ) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == my_chain_id());
+        throw_unless(410, chain_id == MY_CHAIN_ID);
 
         slice to_wallet_address = create_address(0, addr_hash);
 
@@ -87,31 +85,33 @@ int my_chain_id() asm "1 PUSHINT";
                 .end_cell();
 
         var msg = begin_cell()
-                .store_uint(0x18, 6)
+                .store_uint(BOUNCEABLE, 6)
                 .store_slice(minter_address)
                 .store_coins(bridge_mint_fee)
                 .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
                 .store_ref(jetton_minter_state_init)
                 .store_ref(master_msg);
 
-        send_raw_message(msg.end_cell(), 0); ;; revert on errors
+        send_raw_message(msg.end_cell(), SEND_MODE_REGULAR); ;; revert on errors
 
     } elseif (op == op::execute_voting::get_reward()) {
 
         slice reward_address = voting_data~load_msg_addr();
+        voting_data.end_parse();
 
         ;; reserve 100 Toncoins for storage fees
         raw_reserve(100000000000, 2);
         var msg = begin_cell()
-                .store_uint(0x18, 6) ;; #int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddressInt = 0 1 1 0 00
+                .store_uint(NON_BOUNCEABLE, 6)
                 .store_slice(reward_address)
                 .store_grams(0)
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
-        send_raw_message(msg.end_cell(), 128); ;; send all the remainings
+        send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
 
     } elseif (op == op::execute_voting::change_collector()) {
 
         collector_address = voting_data~load_msg_addr();
+        voting_data.end_parse();
 
     }
 
@@ -131,7 +131,7 @@ int my_chain_id() asm "1 PUSHINT";
         .store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
         .store_ref(data)
         .end_cell();
-    send_raw_message(msg, 0);
+    send_raw_message(msg, SEND_MODE_REGULAR);
 }
 
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg_body) impure {
@@ -179,13 +179,14 @@ int my_chain_id() asm "1 PUSHINT";
         slice response_address = in_msg_body~load_msg_addr();
         int destination_address = in_msg_body~load_uint(160);
         cell wrapped_token_data = in_msg_body~load_ref();
+        in_msg_body.end_parse();
 
         (slice minter_address, _) = calculate_minter_address(wrapped_token_data);
 
         throw_unless(error::minter_not_sender(), equal_slices(minter_address, sender_address));
         (int chain_id, int token_address, _) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == my_chain_id()); ;; can never happen
+        throw_unless(410, chain_id == MY_CHAIN_ID); ;; can never happen
 
         (int from_address_wc, int from_address_hash) = parse_std_addr(from_address);
 
@@ -212,5 +213,5 @@ slice get_minter_address(cell wrapped_token_data) method_id {
 (int, int, cell, cell, int) get_bridge_data() method_id {
     (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
     (int wc, int addr) = parse_std_addr(collector_address);
-    return (wc, addr, jetton_minter_code, jetton_wallet_code, my_chain_id());
+    return (wc, addr, jetton_minter_code, jetton_wallet_code, MY_CHAIN_ID);
 }

@@ -213,3 +213,13 @@ builder store_coins(builder b, int x) asm "STVARUINT16";
 int equal_slices (slice a, slice b) asm "SDEQ";
 int builder_null?(builder b) asm "ISNULL";
 builder store_builder(builder to, builder from) asm "STBR";
+
+const int BOUNCEABLE = 0x18;
+const int NON_BOUNCEABLE = 0x10;
+
+const int SEND_MODE_REGULAR = 0;
+const int SEND_MODE_PAY_FEES_SEPARETELY = 1;
+const int SEND_MODE_IGNORE_ERRORS = 2;
+const int SEND_MODE_DESTROY = 32;
+const int SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE = 64;
+const int SEND_MODE_CARRY_ALL_BALANCE = 128;
