@@ -19,7 +19,11 @@ This is suitable for most tokens, if you need tokens transferable between workch
 
 (int, slice, slice, cell) load_data() inline {
   slice ds = get_data().begin_parse();
-  return (ds~load_coins(), ds~load_msg_addr(), ds~load_msg_addr(), ds~load_ref());
+
+  (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = (ds~load_coins(), ds~load_msg_addr(), ds~load_msg_addr(), ds~load_ref());
+  ds.end_parse();
+
+  return (balance, owner_address, jetton_master_address, jetton_wallet_code);
 }
 
 () save_data (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) impure inline {
