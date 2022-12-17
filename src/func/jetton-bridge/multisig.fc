@@ -335,7 +335,7 @@ int message_signed_by_id?(int id, int query_id) method_id {
   return 0;
 }
 
-cell messages_by_mask(int mask) method_id {
+cell messages_by_mask(int mask, int inv) method_id {
   (_, int n, _, _, _, cell pending_queries, _) = unpack_state();
   int i = -1;
   cell a = new_dict();
@@ -343,7 +343,7 @@ cell messages_by_mask(int mask) method_id {
     (i, var cs, var f) = pending_queries.udict_get_next?(64, i);
     if (f) {
       if (cs~load_int(1)) {
-        int cnt_bits = cs.skip_bits(8 + 8).preload_uint(n);
+        int cnt_bits = cs.skip_bits(8 + 8).preload_uint(n) ^ inv;
         if (cnt_bits & mask) {
           a~udict_set_builder(64, i, begin_cell().store_slice(cs));
         }
@@ -353,12 +353,16 @@ cell messages_by_mask(int mask) method_id {
   return a;
 }
 
+cell get_messages_signed_by_id(int id) method_id {
+  return messages_by_mask(1 << id, 0);
+}
+
 cell get_messages_unsigned_by_id(int id) method_id {
-  return messages_by_mask(1 << id);
+  return messages_by_mask(1 << id, ~ 0);
 }
 
 cell get_messages_unsigned() method_id {
-  return messages_by_mask(~ 0);
+  return messages_by_mask(~ 0, 0);
 }
 
 (int, int) get_n_k() method_id {
