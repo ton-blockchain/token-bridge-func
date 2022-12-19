@@ -70,7 +70,7 @@ slice zero_address() inline {
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
     if (op == op::mint()) {
-        throw_unless(error::bridge_not_sender(), (sender_wc == -1) & (sender_address_hash == bridge_address_hash));
+        throw_unless(error::bridge_not_sender, (sender_wc == -1) & (sender_address_hash == bridge_address_hash));
         slice to_address = in_msg_body~load_msg_addr();
 
         int rest_amount = pair_first(get_balance()) - minter_min_tons_for_storage;
@@ -98,7 +98,7 @@ slice zero_address() inline {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         in_msg_body.end_parse();
-        throw_unless(error::owner_not_sender(),
+        throw_unless(error::owner_not_sender,
                 equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
         save_data(total_supply - jetton_amount, content, jetton_wallet_code);

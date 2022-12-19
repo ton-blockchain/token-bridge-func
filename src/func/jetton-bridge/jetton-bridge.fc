@@ -38,7 +38,7 @@
 
     int op = voting_data~load_uint(8);
 
-    throw_if(error::unknown_execute_voting_op(),
+    throw_if(error::unknown_execute_voting_op,
         (op != op::execute_voting::swap()) &
         (op != op::execute_voting::get_reward()) &
         (op != op::execute_voting::change_collector()));
@@ -142,7 +142,7 @@
         return ();
     }
 
-    throw_if(error::inbound_message_has_empty_body(), in_msg_body.slice_empty?());
+    throw_if(error::inbound_message_has_empty_body, in_msg_body.slice_empty?());
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
@@ -151,7 +151,7 @@
         return (); ;; just accept coins
     }
 
-    throw_if(error::unknown_op(), (op != op::burn_notification()) & (op != op::execute_voting()) & (op != op::pay_swap()));
+    throw_if(error::unknown_op, (op != op::burn_notification()) & (op != op::execute_voting()) & (op != op::pay_swap()));
 
     slice sender_address = cs~load_msg_addr();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
@@ -159,7 +159,7 @@
     (_, int oracles_address_hash, _, _, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
 
     if (op == op::execute_voting()) {
-        throw_unless(error::oracles_not_sender(), (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
+        throw_unless(error::oracles_not_sender, (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
 
         execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee);
 
@@ -183,7 +183,7 @@
 
         (slice minter_address, _) = calculate_minter_address(wrapped_token_data);
 
-        throw_unless(error::minter_not_sender(), equal_slices(minter_address, sender_address));
+        throw_unless(error::minter_not_sender, equal_slices(minter_address, sender_address));
         (int chain_id, int token_address, _) = unpack_wrapped_token_data(wrapped_token_data);
 
         throw_unless(410, chain_id == MY_CHAIN_ID); ;; can never happen
