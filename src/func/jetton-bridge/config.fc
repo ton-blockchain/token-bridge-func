@@ -16,7 +16,11 @@
     ;; key: uint256 (public key) value: uint256 (eth address)
     cell oracles = slice_config~load_dict();
 
-    int state_flags = slice_config~load_uint(8); ;; 0 - burn (TON->EVM transfer) enabled, 1 - burn (TON->EVM transfer) disabled
+    ;; state_flags & 1 - burn (TON->EVM transfer) suspended
+    ;; state_flags & 2 - swaps (EVM->TON transfer) suspended
+    ;; state_flags & 4 - all governance actions suspended
+    ;; state_flags & 8 - collector signature removal suspended
+    int state_flags = slice_config~load_uint(8);
 
     slice prices = slice_config~load_ref().begin_parse();
 

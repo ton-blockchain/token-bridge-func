@@ -41,7 +41,7 @@
     return (minter_address, jetton_minter_state_init);
 }
 
-() execute_voting (slice oracles_address, slice voting_data, int query_id, int bridge_mint_fee) impure {
+() execute_voting (slice oracles_address, slice voting_data, int query_id, int bridge_mint_fee, int state_flags) impure {
     (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
 
     int op = voting_data~load_uint(8);
@@ -51,7 +51,10 @@
         (op != op::execute_voting::get_reward()) &
         (op != op::execute_voting::change_collector()));
 
+    throw_if(error::operation_suspended, state_flags & 4);
+
     if (op == op::execute_voting::swap()) {
+        throw_if(error::operation_suspended, state_flags & 2);
         (
             int ext_chain_hash,
             int internal_index, 
@@ -164,12 +167,12 @@
     slice sender_address = cs~load_msg_addr();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
-    (_, int oracles_address_hash, _, _, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
+    (_, int oracles_address_hash, _, int state_flags, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
 
     if (op == op::execute_voting()) {
         throw_unless(error::oracles_not_sender, (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
 
-        execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee);
+        execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee, state_flags);
 
     } elseif (op == op::pay_swap()) {
 

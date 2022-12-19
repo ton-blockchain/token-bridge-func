@@ -4,6 +4,7 @@
 #include "params.fc";
 #include "op-codes.fc";
 #include "utils.fc";
+#include "errors.fc";
 #include "config.fc";
 
 
@@ -245,7 +246,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   }
 
   if (op == op::burn()) { ;; burn
-    throw_unless(704, state_flags == 0);
+    throw_if( error::operation_suspended, state_flags & 1);
     throw_unless(707, msg_value == bridge_burn_fee);
     burn_tokens(in_msg_body, sender_address, msg_value, fwd_fee);
     return ();

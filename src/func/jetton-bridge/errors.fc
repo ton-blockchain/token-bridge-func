@@ -12,3 +12,4 @@ const int error::oracles_not_sender = 401;
 const int error::minter_not_sender = 402;
 const int error::bridge_not_sender = 403;
 const int error::owner_not_sender = 404;
+const int error::operation_suspended = 704;
