@@ -79,11 +79,11 @@
                 int token_decimals
         ) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == MY_CHAIN_ID);
+        throw_unless(error::wrong_external_chain_id, chain_id == MY_CHAIN_ID);
 
         slice to_wallet_address = create_address(0, addr_hash);
 
-        throw_unless(407, bridge_mint_fee > forward_coins_amount);
+        throw_unless(error::mint_fee_not_matched, bridge_mint_fee > forward_coins_amount);
 
         (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
@@ -176,9 +176,9 @@
 
     } elseif (op == op::pay_swap()) {
 
-        throw_unless(399, msg_value == bridge_mint_fee);
+        throw_unless(error::mint_fee_not_matched2, msg_value == bridge_mint_fee);
 
-        emit_log_simple(0xc0550ccf,
+        emit_log_simple(LOG_SWAP_PAID,
                 begin_cell()
                         .store_uint(query_id, 64)
                         .end_cell()
@@ -197,13 +197,13 @@
         throw_unless(error::minter_not_sender, equal_slices(minter_address, sender_address));
         (int chain_id, int token_address, _) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == MY_CHAIN_ID); ;; can never happen
+        throw_unless(error::wrong_external_chain_id, chain_id == MY_CHAIN_ID); ;; can never happen
 
         (int from_address_wc, int from_address_hash) = parse_std_addr(from_address);
 
-        throw_unless(413, from_address_wc == 0); ;; can never happen
+        throw_unless(error::wrong_sender_workchain, from_address_wc == 0); ;; can never happen
 
-        emit_log_simple(0xc0470ccf, 
+        emit_log_simple(LOG_BURN, 
             begin_cell() ;; 704 bit
                     .store_uint(destination_address, 160)
                     .store_uint(jetton_amount, 128) ;; max 124 bits

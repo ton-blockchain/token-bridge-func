@@ -13,3 +13,22 @@ const int error::minter_not_sender = 402;
 const int error::bridge_not_sender = 403;
 const int error::owner_not_sender = 404;
 const int error::operation_suspended = 704;
+
+;; jetton wallet errors
+const int error::unauthorized_transfer = 705;
+const int error::not_enough_funds = 706;
+const int error::unauthorized_incoming_transfer = 707;
+const int error::malformed_forward_payload = 708;
+const int error::not_enough_tons = 709;
+const int error::burn_fee_not_matched = 707;
+
+;; jetton minter errors
+const int error::discovery_fee_not_matched = 75;
+
+;; jetton bridge errors
+const int error::wrong_external_chain_id = 410;
+const int error::wrong_sender_workchain = 413;
+const int error::mint_fee_not_matched = 407;
+const int error::mint_fee_not_matched2 = 399;
+
+
