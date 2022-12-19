@@ -1,3 +1,9 @@
+#include "stdlib.fc";
+#include "params.fc";
+#include "utils.fc";
+#include "config.fc";
+
+
 cell load_data() inline_ref {
     var ds = get_data().begin_parse();
     return ds~load_dict();

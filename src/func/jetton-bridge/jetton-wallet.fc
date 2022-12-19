@@ -1,5 +1,12 @@
 ;; Jetton Wallet Smart Contract
 
+#include "stdlib.fc";
+#include "params.fc";
+#include "op-codes.fc";
+#include "utils.fc";
+#include "config.fc";
+
+
 {-
 
 NOTE that this tokens can be transferred within the same workchain.

@@ -1,3 +1,6 @@
+#include "stdlib.fc";
+#include "params.fc";
+
 (int, int) get_bridge_config() inline_ref {
   cell bridge_config = config_param(CONFIG_PARAM_ID);
   if (bridge_config.cell_null?()) {

@@ -1,3 +1,11 @@
+#include "stdlib.fc";
+#include "params.fc";
+#include "op-codes.fc";
+#include "errors.fc";
+#include "utils.fc";
+#include "config.fc";
+#include "jetton-bridge.fc";
+
 ;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell
 (slice, cell, cell) load_data() inline_ref {
     slice slice_data = get_data().begin_parse();

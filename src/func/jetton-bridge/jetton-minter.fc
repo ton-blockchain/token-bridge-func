@@ -1,5 +1,14 @@
 ;; Jettons discoverable smart contract
 
+#include "stdlib.fc";
+#include "params.fc";
+#include "op-codes.fc";
+#include "errors.fc";
+#include "utils.fc";
+#include "config.fc";
+#include "discovery-params.fc";
+
+
 slice zero_address() inline {
     return begin_cell().store_uint(0, 2).end_cell().begin_parse();
 }
