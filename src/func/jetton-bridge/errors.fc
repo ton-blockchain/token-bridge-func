@@ -29,6 +29,6 @@ const int error::discovery_fee_not_matched = 75;
 const int error::wrong_external_chain_id = 410;
 const int error::wrong_sender_workchain = 413;
 const int error::mint_fee_not_matched = 407;
-const int error::mint_fee_not_matched2 = 399;
+const int error::mint_fee_less_forward = 399;
 
 
