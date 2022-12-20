@@ -1,3 +1,8 @@
 *.pk
 *.swp
-build
+/build/*.fif
+/build/*.json
+/build/*.boc
+/build/boc/*.fif
+/build/boc/*.json
+/build/boc/*.boc
