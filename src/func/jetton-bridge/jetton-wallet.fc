@@ -169,7 +169,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
-  throw_unless(703, jetton_amount > 0);
+  throw_unless(error::not_enough_funds, jetton_amount > 0);
   slice response_address = in_msg_body~load_msg_addr();
   cell custom_payload = in_msg_body~load_dict();
   slice custom_payload_slice = custom_payload.begin_parse();
@@ -206,7 +206,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   int op = in_msg_body~load_uint(32);
-  throw_unless(error::not_enough_tons, (op == op::internal_transfer) | (op == op::burn_notification));
+  throw_unless(error::unknown_op, (op == op::internal_transfer) | (op == op::burn_notification));
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
   balance += jetton_amount;

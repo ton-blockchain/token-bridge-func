@@ -25,17 +25,19 @@ Token bridge based on code of [Toncoin Bridge](https://github.com/ton-blockchain
 
 Jettons:
 
-* `dicovery-params.fc`, `op-codes.fc`, `params.fc`, `stdlib.fc`, `utils.fc` - same.
+* `dicovery-params.fc`, `op-codes.fc`, `params.fc`, `stdlib.fc`, `utils.fc` - changes do not affect functionality.
 
 * `jetton-wallet.fc` - same, but `uint160 destination_address` (destination address in EVM network) added in `custom_payload` of `burn` message and to `burn_notification` message.
 
+   `min_tons_for_storage` and `gas_consumption` constants moved to config. 
+
    3 additional `burn` checks:
 
-   `throw_unless(704, state_flags == 0);` - bridge work mode flag;
+   `throw_if( error::operation_suspended, state_flags & 1);`
+  
+   `throw_unless(error::burn_fee_not_matched, msg_value == bridge_burn_fee);` - `bridge_burn_fee` must include network fees ;
 
-   `throw_unless(707, msg_value >= bridge_burn_fee);` - `bridge_burn_fee` must include network fees ;
-
-   `throw_unless(703, jetton_amount > 0);` - forbid zero burns;
+   `throw_unless(error::not_enough_funds, jetton_amount > 0);` - forbid zero burns;
 
 * `jetton-minter.fc` - same with `jetton-minter-discoverable.fc` but:
 
@@ -48,6 +50,8 @@ Jettons:
     * no `change_admin`, `change_content`
 
     * `get_jetton_data` constructs semi-chain data in runtime
+  
+    * `provide_address_gas_consumption` and `min_tons_for_storage` constants moved to config
 
 Bridge:
 
