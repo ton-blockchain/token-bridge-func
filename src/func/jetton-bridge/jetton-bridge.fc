@@ -1,3 +1,11 @@
+#include "stdlib.fc";
+#include "params.fc";
+#include "op-codes.fc";
+#include "errors.fc";
+#include "utils.fc";
+#include "config.fc";
+#include "jetton-bridge.fc";
+
 ;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell
 (slice, cell, cell) load_data() inline_ref {
     slice slice_data = get_data().begin_parse();
@@ -33,17 +41,20 @@
     return (minter_address, jetton_minter_state_init);
 }
 
-() execute_voting (slice oracles_address, slice voting_data, int query_id, int bridge_mint_fee) impure {
+() execute_voting (slice oracles_address, slice voting_data, int query_id, int bridge_mint_fee, int state_flags) impure {
     (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
 
     int op = voting_data~load_uint(8);
 
-    throw_if(error::unknown_execute_voting_op(),
+    throw_if(error::unknown_execute_voting_op,
         (op != op::execute_voting::swap()) &
         (op != op::execute_voting::get_reward()) &
         (op != op::execute_voting::change_collector()));
 
+    throw_if(error::operation_suspended, state_flags & 4);
+
     if (op == op::execute_voting::swap()) {
+        throw_if(error::operation_suspended, state_flags & 2);
         (
             int ext_chain_hash,
             int internal_index, 
@@ -68,11 +79,11 @@
                 int token_decimals
         ) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == MY_CHAIN_ID);
+        throw_unless(error::wrong_external_chain_id, chain_id == MY_CHAIN_ID);
 
         slice to_wallet_address = create_address(0, addr_hash);
 
-        throw_unless(407, bridge_mint_fee > forward_coins_amount);
+        throw_unless(error::mint_fee_not_matched, bridge_mint_fee > forward_coins_amount);
 
         (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
@@ -142,7 +153,7 @@
         return ();
     }
 
-    throw_if(error::inbound_message_has_empty_body(), in_msg_body.slice_empty?());
+    throw_if(error::inbound_message_has_empty_body, in_msg_body.slice_empty?());
 
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
@@ -151,23 +162,23 @@
         return (); ;; just accept coins
     }
 
-    throw_if(error::unknown_op(), (op != op::burn_notification()) & (op != op::execute_voting()) & (op != op::pay_swap()));
+    throw_if(error::unknown_op, (op != op::burn_notification()) & (op != op::execute_voting()) & (op != op::pay_swap()));
 
     slice sender_address = cs~load_msg_addr();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
-    (_, int oracles_address_hash, _, _, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
+    (_, int oracles_address_hash, _, int state_flags, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
 
     if (op == op::execute_voting()) {
-        throw_unless(error::oracles_not_sender(), (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
+        throw_unless(error::oracles_not_sender, (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
 
-        execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee);
+        execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee, state_flags);
 
     } elseif (op == op::pay_swap()) {
 
-        throw_unless(399, msg_value == bridge_mint_fee);
+        throw_unless(error::mint_fee_not_matched2, msg_value == bridge_mint_fee);
 
-        emit_log_simple(0xc0550ccf,
+        emit_log_simple(LOG_SWAP_PAID,
                 begin_cell()
                         .store_uint(query_id, 64)
                         .end_cell()
@@ -183,16 +194,16 @@
 
         (slice minter_address, _) = calculate_minter_address(wrapped_token_data);
 
-        throw_unless(error::minter_not_sender(), equal_slices(minter_address, sender_address));
+        throw_unless(error::minter_not_sender, equal_slices(minter_address, sender_address));
         (int chain_id, int token_address, _) = unpack_wrapped_token_data(wrapped_token_data);
 
-        throw_unless(410, chain_id == MY_CHAIN_ID); ;; can never happen
+        throw_unless(error::wrong_external_chain_id, chain_id == MY_CHAIN_ID); ;; can never happen
 
         (int from_address_wc, int from_address_hash) = parse_std_addr(from_address);
 
-        throw_unless(413, from_address_wc == 0); ;; can never happen
+        throw_unless(error::wrong_sender_workchain, from_address_wc == 0); ;; can never happen
 
-        emit_log_simple(0xc0470ccf, 
+        emit_log_simple(LOG_BURN, 
             begin_cell() ;; 704 bit
                     .store_uint(destination_address, 160)
                     .store_uint(jetton_amount, 128) ;; max 124 bits

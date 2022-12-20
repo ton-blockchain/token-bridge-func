@@ -1,6 +1,11 @@
 const int CONFIG_PARAM_ID = 79;
 const int MY_CHAIN_ID = 1;
+const int LOG_BURN = 0xc0470ccf;
+const int LOG_SWAP_PAID = 0xc0550ccf;
 
+
+;; asm PUSHINT instead of const is used for legacy reason:
+;; that way jetton-wallet/jetton-minter will be as close to canonical as possible
 int workchain() asm "0 PUSHINT";
 
 () force_chain(slice addr) impure {

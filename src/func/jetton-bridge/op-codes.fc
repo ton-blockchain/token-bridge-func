@@ -1,3 +1,6 @@
+;; asms PUSHINT instead of const are used for legacy reason:
+;; that way jetton-wallet/jetton-minter will be as close to canonical as possible
+
 int op::transfer() asm "0xf8a7ea5 PUSHINT";
 int op::transfer_notification() asm "0x7362d09c PUSHINT";
 int op::internal_transfer() asm "0x178d4519 PUSHINT";
