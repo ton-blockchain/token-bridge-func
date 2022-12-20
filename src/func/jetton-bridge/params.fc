@@ -3,12 +3,9 @@ const int MY_CHAIN_ID = 1;
 const int LOG_BURN = 0xc0470ccf;
 const int LOG_SWAP_PAID = 0xc0550ccf;
 
-
-;; asm PUSHINT instead of const is used for legacy reason:
-;; that way jetton-wallet/jetton-minter will be as close to canonical as possible
-int workchain() asm "0 PUSHINT";
+const int WORKCHAIN = 0;
 
 () force_chain(slice addr) impure {
   (int wc, _) = parse_std_addr(addr);
-  throw_unless(333, wc == workchain());
+  throw_unless(333, wc == WORKCHAIN);
 }

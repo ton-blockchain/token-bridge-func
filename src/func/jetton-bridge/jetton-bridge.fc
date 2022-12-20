@@ -47,13 +47,13 @@
     int op = voting_data~load_uint(8);
 
     throw_if(error::unknown_execute_voting_op,
-        (op != op::execute_voting::swap()) &
-        (op != op::execute_voting::get_reward()) &
-        (op != op::execute_voting::change_collector()));
+        (op != op::execute_voting::swap) &
+        (op != op::execute_voting::get_reward) &
+        (op != op::execute_voting::change_collector));
 
     throw_if(error::operation_suspended, state_flags & 4);
 
-    if (op == op::execute_voting::swap()) {
+    if (op == op::execute_voting::swap) {
         throw_if(error::operation_suspended, state_flags & 2);
         (
             int ext_chain_hash,
@@ -88,7 +88,7 @@
         (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
         cell master_msg = begin_cell() ;; mint tokens to wallet address
-                .store_uint(op::mint(), 32)
+                .store_uint(op::mint, 32)
                 .store_uint(query_id, 64)
                 .store_slice(to_wallet_address) ;; 3 + 8 + 256 = 267 bit
                 .store_coins(mint_jetton_amount) ;; max 124 bit
@@ -105,7 +105,7 @@
 
         send_raw_message(msg.end_cell(), SEND_MODE_REGULAR); ;; revert on errors
 
-    } elseif (op == op::execute_voting::get_reward()) {
+    } elseif (op == op::execute_voting::get_reward) {
 
         slice reward_address = voting_data~load_msg_addr();
         voting_data.end_parse();
@@ -119,7 +119,7 @@
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
         send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
 
-    } elseif (op == op::execute_voting::change_collector()) {
+    } elseif (op == op::execute_voting::change_collector) {
 
         collector_address = voting_data~load_msg_addr();
         voting_data.end_parse();
@@ -128,7 +128,7 @@
 
     save_data(collector_address, jetton_minter_code, jetton_wallet_code);
 
-    if (op != op::execute_voting::get_reward()) {
+    if (op != op::execute_voting::get_reward) {
         send_receipt_message(oracles_address, 0x10000 + 9, query_id, 0, 0, 64); ;; thanks
     }
 }
@@ -158,23 +158,23 @@
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
-    if (op == op::excesses()) {
+    if (op == op::excesses) {
         return (); ;; just accept coins
     }
 
-    throw_if(error::unknown_op, (op != op::burn_notification()) & (op != op::execute_voting()) & (op != op::pay_swap()));
+    throw_if(error::unknown_op, (op != op::burn_notification) & (op != op::execute_voting) & (op != op::pay_swap));
 
     slice sender_address = cs~load_msg_addr();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
     (_, int oracles_address_hash, _, int state_flags, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
 
-    if (op == op::execute_voting()) {
+    if (op == op::execute_voting) {
         throw_unless(error::oracles_not_sender, (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
 
         execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee, state_flags);
 
-    } elseif (op == op::pay_swap()) {
+    } elseif (op == op::pay_swap) {
 
         throw_unless(error::mint_fee_not_matched2, msg_value == bridge_mint_fee);
 
@@ -184,7 +184,7 @@
                         .end_cell()
         );
 
-    } elseif (op == op::burn_notification()) {
+    } elseif (op == op::burn_notification) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
         slice response_address = in_msg_body~load_msg_addr();

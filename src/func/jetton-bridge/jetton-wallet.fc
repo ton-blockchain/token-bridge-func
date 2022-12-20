@@ -75,7 +75,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
           .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
           .store_ref(state_init);
   var msg_body = begin_cell()
-          .store_uint(op::internal_transfer(), 32)
+          .store_uint(op::internal_transfer, 32)
           .store_uint(query_id, 64)
           .store_coins(jetton_amount)
           .store_slice(owner_address)
@@ -132,7 +132,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
     slice either_forward_payload = in_msg_body;
 
     var msg_body = begin_cell()
-            .store_uint(op::transfer_notification(), 32)
+            .store_uint(op::transfer_notification, 32)
             .store_uint(query_id, 64)
             .store_coins(jetton_amount)
             .store_slice(from_address)
@@ -155,7 +155,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
             .store_slice(response_address)
             .store_coins(msg_value)
             .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-            .store_uint(op::excesses(), 32)
+            .store_uint(op::excesses, 32)
             .store_uint(query_id, 64);
     send_raw_message(msg.end_cell(), SEND_MODE_IGNORE_ERRORS);
   }
@@ -182,7 +182,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   throw_unless(error::not_enough_funds, balance >= 0);
 
   var msg_body = begin_cell()
-          .store_uint(op::burn_notification(), 32) ;; 32 bit
+          .store_uint(op::burn_notification, 32) ;; 32 bit
           .store_uint(query_id, 64) ;; 64 bit
           .store_coins(jetton_amount) ;; max 124 bit
           .store_slice(owner_address) ;; 3 + 8 + 256 = 267 bit
@@ -206,7 +206,7 @@ This is suitable for most tokens, if you need tokens transferable between workch
   in_msg_body~skip_bits(32); ;; 0xFFFFFFFF
   (int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) = load_data();
   int op = in_msg_body~load_uint(32);
-  throw_unless(error::not_enough_tons, (op == op::internal_transfer()) | (op == op::burn_notification()));
+  throw_unless(error::not_enough_tons, (op == op::internal_transfer) | (op == op::burn_notification));
   int query_id = in_msg_body~load_uint(64);
   int jetton_amount = in_msg_body~load_coins();
   balance += jetton_amount;
@@ -235,17 +235,17 @@ This is suitable for most tokens, if you need tokens transferable between workch
 
   (_, _, _, int state_flags, int bridge_burn_fee, int bridge_mint_fee, int wallet_min_tons_for_storage, int wallet_gas_consumption, _, _) = get_jetton_bridge_config();
 
-  if (op == op::transfer()) { ;; outgoing transfer
+  if (op == op::transfer) { ;; outgoing transfer
     send_tokens(in_msg_body, sender_address, msg_value, fwd_fee, wallet_min_tons_for_storage, wallet_gas_consumption);
     return ();
   }
 
-  if (op == op::internal_transfer()) { ;; incoming transfer
+  if (op == op::internal_transfer) { ;; incoming transfer
     receive_tokens(in_msg_body, sender_address, my_balance, fwd_fee, msg_value, wallet_min_tons_for_storage, wallet_gas_consumption);
     return ();
   }
 
-  if (op == op::burn()) { ;; burn
+  if (op == op::burn) { ;; burn
     throw_if( error::operation_suspended, state_flags & 1);
     throw_unless(error::burn_fee_not_matched, msg_value == bridge_burn_fee);
     burn_tokens(in_msg_body, sender_address, msg_value, fwd_fee);

@@ -25,7 +25,7 @@ slice create_address(int wc, int address_hash) inline {
 }
 
 slice calculate_address_by_state_init(cell state_init) inline {
-    return create_address(workchain(), cell_hash(state_init));
+    return create_address(WORKCHAIN, cell_hash(state_init));
 }
 
 slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {

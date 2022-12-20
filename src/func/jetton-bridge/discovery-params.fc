@@ -1,13 +1,8 @@
-;; moved to the separate file to keep hex of the previous codes unchanged
-
-;; asms PUSHINT instead of const are used for legacy reason:
-;; that way jetton-wallet/jetton-minter will be as close to canonical as possible
-
-int op::provide_wallet_address() asm "0x2c76b973 PUSHINT";
-int op::take_wallet_address() asm "0xd1735400 PUSHINT";
+const int op::provide_wallet_address = 0x2c76b973;
+const int op::take_wallet_address = 0xd1735400;
 
 int is_resolvable?(slice addr) inline {
     (int wc, _) = parse_std_addr(addr);
 
-    return wc == workchain();
+    return wc == WORKCHAIN;
 }

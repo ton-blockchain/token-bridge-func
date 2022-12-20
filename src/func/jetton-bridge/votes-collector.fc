@@ -10,6 +10,10 @@ cell load_data() inline_ref {
     return ds~load_dict();
 }
 
+;; `external_votings` is HashMap with `voting_id` uint256 key, value is `time:uint32 old_oracles_address:uint256 signatures:Dict`
+;; `time` - last entry update unixtime
+;; `old_oracles_address` - oracles multisig address (hash part) on the moment of last update
+;; `signatures` is HashMap with `oracle_evm_address` uint256 key and `signature` 520-bit value
 () save_data(cell external_votings) impure inline_ref {
     var st = begin_cell().store_dict(external_votings).end_cell();
     set_data(st);
@@ -46,6 +50,8 @@ cell load_data() inline_ref {
     return send_receipt_message(s_addr, 0x10000 + 5, query_id, voting_id, 0, 64);
 }
 
+;; `external_ids` contains uint256 `voting_id` to remove from `external_votings`.
+;; Next `voting_id` can be contained in the first child ref and so recursively.
 () remove_outdated_votings(slice s_addr, int query_id, slice external_ids) impure {
     cell external_votings = load_data();
 

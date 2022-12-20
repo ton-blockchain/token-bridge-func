@@ -51,8 +51,8 @@ Jettons:
 
 Bridge:
 
-* `config.fc` - similar, but `uint8 state_flags` and `Coins burn_bridge_fee` added.
+* `config.fc` - similar, but additional fields added.
 
-* `multisig.fc` - same, only another config number.
+* `multisig.fc` - same, just another config and [fixed](https://github.com/ton-blockchain/multisig-contract) `get_messages_unsigned_by_id` get-method. 
 
-* `votes-collector.fc` - same, only another config number.
+* `votes-collector.fc` - same, just another config and inability to remove old votes if config.state & 8 
