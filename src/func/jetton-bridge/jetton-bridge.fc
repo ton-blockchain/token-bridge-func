@@ -141,16 +141,22 @@
     }
 }
 
-() emit_log_simple (int event_id, cell data) impure inline {
+() emit_log_simple (int event_id, cell data, int query_id) impure inline {
     var msg = begin_cell()
-        .store_uint (12, 4) ;; ext_out_msg_info$11 src:MsgAddressInt ()
-        .store_uint (1, 2)
-        .store_uint (256, 9)
-        .store_uint(event_id, 256)
-        .store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-        .store_ref(data)
-        .end_cell();
-    send_raw_message(msg, SEND_MODE_REGULAR);
+        .store_uint (12, 4)         ;; ext_out_msg_info$11 src:MsgAddressInt ()
+        .store_uint (1, 2)          ;; addr_extern$01
+        .store_uint (256, 9)        ;; len:(## 9)
+        .store_uint(event_id, 256); ;; external_address:(bits len)
+
+    if(null?(data)) {
+        msg = msg.store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+                 .store_query_id(query_id);
+    } else {
+        msg = msg.store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+                 .store_ref(data);
+    }
+
+    send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
 }
 
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg_body) impure {
@@ -188,17 +194,7 @@
 
         throw_if(error::oracles_sender, is_oracles);
         throw_unless(error::mint_fee_not_matched, msg_value == bridge_mint_fee);
-
-        var msg = begin_cell()
-                .store_uint (12, 4) ;; ext_out_msg_info$11 src:MsgAddressInt ()
-                .store_uint (1, 2)
-                .store_uint (256, 9)
-                .store_uint(LOG_SWAP_PAID, 256)
-                .store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-                .store_uint(query_id, 64)
-                .end_cell();
-        send_raw_message(msg, SEND_MODE_REGULAR);
-
+        emit_log_simple (LOG_SWAP_PAID, null(), query_id);
     } elseif (op == op::burn_notification) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -224,7 +220,8 @@
                     .store_uint(jetton_amount, 128) ;; max 124 bits
                     .store_uint(token_address, 160)
                     .store_uint(from_address_hash, 256)
-                    .end_cell()
+                    .end_cell(),
+            null()
         );
     }
 }
