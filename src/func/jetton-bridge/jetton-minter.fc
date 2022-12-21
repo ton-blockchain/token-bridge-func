@@ -70,8 +70,7 @@ slice zero_address() inline {
     int fwd_fee = muldiv(cs~load_coins(), 3, 2); ;; we use message fwd_fee for estimation of forward_payload costs
 
     slice in_msg_body_copy = in_msg_body;
-    int op = in_msg_body~load_uint(32);
-    int query_id = in_msg_body~load_uint(64);
+    (int op, int query_id) = in_msg_body~load_body_header();
 
     (int total_supply, cell content, cell jetton_wallet_code) = load_data();
 
@@ -90,8 +89,7 @@ slice zero_address() inline {
         in_msg_body.end_parse();
 
         cell master_msg = begin_cell()
-                .store_uint(op::internal_transfer, 32)
-                .store_uint(query_id, 64)
+                .store_body_header(op::internal_transfer, query_id)
                 .store_coins(jetton_amount) ;; max 124 bit
                 .store_slice(zero_address()) ;; from_address, 2 bit
                 .store_slice(create_address(-1, bridge_address_hash)) ;; response_address, 3 + 8 + 256 = 267 bit
@@ -148,8 +146,7 @@ slice zero_address() inline {
                 .store_slice(sender_address)
                 .store_coins(0)
                 .store_msgbody_prefix_slice()
-                .store_uint(op::take_wallet_address, 32)
-                .store_uint(query_id, 64);
+                .store_body_header(op::take_wallet_address, query_id);
 
         if (is_resolvable?(owner_address)) {
             msg = msg.store_slice(calculate_user_jetton_wallet_address(owner_address, my_address(), jetton_wallet_code));

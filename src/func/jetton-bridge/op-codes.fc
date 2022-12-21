@@ -18,3 +18,17 @@ const int op::execute_voting::get_reward = 5;
 const int op::execute_voting::change_collector = 7;
 
 const int op::pay_swap = 8;
+
+(slice, (int)) ~load_op(slice s) inline { return s.load_uint(32); }
+(slice, (int)) ~load_query_id(slice s) inline { return s.load_uint(64); }
+(slice, (int, int)) ~load_body_header(slice s) inline {
+  int op = s~load_uint(64);
+  int query_id = s~load_uint(64);
+  return (s, (op, query_id));
+}
+builder store_op(builder b, int op) inline { return b.store_uint(op, 32); }
+builder store_query_id(builder b, int query_id) inline { return b.store_uint(query_id, 64); }
+builder store_body_header(builder b, int op, int query_id) inline {
+  return b.store_uint(op, 32)
+          .store_uint(query_id, 64);
+}

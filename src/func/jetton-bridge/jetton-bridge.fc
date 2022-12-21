@@ -89,8 +89,7 @@
         (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
         cell master_msg = begin_cell() ;; mint tokens to wallet address
-                .store_uint(op::mint, 32)
-                .store_uint(query_id, 64)
+                .store_body_header(op::mint, query_id)
                 .store_slice(to_wallet_address) ;; 3 + 8 + 256 = 267 bit
                 .store_coins(mint_jetton_amount) ;; max 124 bit
                 .store_coins(forward_coins_amount) ;; max 124 bit
@@ -164,8 +163,7 @@
 
     throw_if(error::inbound_message_has_empty_body, in_msg_body.slice_empty?());
 
-    int op = in_msg_body~load_uint(32);
-    int query_id = in_msg_body~load_uint(64);
+    (int op, int query_id) = in_msg_body~load_body_header();
 
     throw_if(error::unknown_op, (op != op::burn_notification) & (op != op::execute_voting) & (op != op::pay_swap) & (op != op::excesses));
 
