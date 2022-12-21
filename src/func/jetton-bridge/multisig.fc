@@ -73,19 +73,19 @@ _ unpack_owner_info(slice cs) inline_ref {
   return (cnt, cnt_bits);
 }
 
-(int, cell, int, int) parse_msg(slice in_msg) inline_ref {
+(int, cell, int, int, int) parse_msg(slice in_msg) inline_ref {
   int mode = in_msg~load_uint(8);
   var msg = in_msg~load_ref();
   var msg' = msg.begin_parse();
-  msg'~load_uint(4); ;; flags
+  int flags = msg'~load_uint(4); ;; flags
   msg'~load_msg_addr(); ;; src
   (int wc, int addr) = parse_std_addr(msg'~load_msg_addr()); ;; dest
-  return (mode, msg, wc, addr);
+  return (mode, msg, wc, addr, flags);
 }
 
 () check_proposed_query(slice in_msg) impure inline {
   throw_unless(43, (slice_refs(in_msg) == 1) & (slice_bits(in_msg) == 8));
-  (_, _, int wc, _) = parse_msg(in_msg);
+  (_, _, int wc, _, _) = parse_msg(in_msg);
   wc~impure_touch();
 }
 
@@ -124,8 +124,9 @@ _ unpack_owner_info(slice cs) inline_ref {
   if (cnt >= k) {
     (int bridge_address, int oracles_address) = get_bridge_config();
     (_, int my_addr) = parse_std_addr(my_address());
-    var (mode, msg', wc, addr) = parse_msg(msg);
-    if ( ((wc == -1) & (addr == bridge_address)) | (oracles_address != my_addr) ) {
+    var (mode, msg', wc, addr, flags) = parse_msg(msg);
+    int is_bounceable = flags & 2;
+    if ( ((wc == -1) & (addr == bridge_address) & is_bounceable) | (oracles_address != my_addr) ) {
       send_raw_message(msg', mode);
     }
     pending_queries~udict_set_builder(64, query_id, begin_cell().store_int(0, 1));

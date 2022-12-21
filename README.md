@@ -57,6 +57,6 @@ Bridge:
 
 * `config.fc` - similar, but additional fields added.
 
-* `multisig.fc` - same, just another config and [fixed](https://github.com/ton-blockchain/multisig-contract) `get_messages_unsigned_by_id` get-method. 
+* `multisig.fc` - same, just another config, [fixed](https://github.com/ton-blockchain/multisig-contract) `get_messages_unsigned_by_id` get-method, prevent send non-bounceable messages to bridge. 
 
 * `votes-collector.fc` - same, just another config and inability to remove old votes if config.state & 8 

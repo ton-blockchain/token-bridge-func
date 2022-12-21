@@ -41,7 +41,7 @@
     return (minter_address, jetton_minter_state_init);
 }
 
-() execute_voting (slice oracles_address, slice voting_data, int query_id, int bridge_mint_fee, int state_flags) impure {
+() execute_voting (slice oracles_address, slice voting_data, int query_id, int bridge_mint_fee, int state_flags, int msg_value) impure {
     (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = load_data();
 
     int op = voting_data~load_uint(8);
@@ -110,12 +110,20 @@
         slice reward_address = voting_data~load_msg_addr();
         voting_data.end_parse();
 
+        var msg = begin_cell() ;; send msg_value from oracles back to prevent withdrawing stakes
+                .store_uint(NON_BOUNCEABLE, 6)
+                .store_slice(oracles_address)
+                .store_coins(msg_value)
+                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+        send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
+
         ;; reserve 100 Toncoins for storage fees
         raw_reserve(100000000000, 2);
-        var msg = begin_cell()
+
+        var msg = begin_cell() ;; send rewards to specified address
                 .store_uint(NON_BOUNCEABLE, 6)
                 .store_slice(reward_address)
-                .store_grams(0)
+                .store_coins(0)
                 .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
         send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
 
@@ -158,24 +166,28 @@
     int op = in_msg_body~load_uint(32);
     int query_id = in_msg_body~load_uint(64);
 
-    if (op == op::excesses) {
-        return (); ;; just accept coins
-    }
-
-    throw_if(error::unknown_op, (op != op::burn_notification) & (op != op::execute_voting) & (op != op::pay_swap));
+    throw_if(error::unknown_op, (op != op::burn_notification) & (op != op::execute_voting) & (op != op::pay_swap) & (op != op::excesses));
 
     slice sender_address = cs~load_msg_addr();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
     (_, int oracles_address_hash, _, int state_flags, int bridge_burn_fee, int bridge_mint_fee, _, _, _, _) = get_jetton_bridge_config();
 
-    if (op == op::execute_voting) {
-        throw_unless(error::oracles_not_sender, (sender_wc == -1) & (oracles_address_hash == sender_address_hash));
+    int is_oracles = (sender_wc == -1) & (oracles_address_hash == sender_address_hash);
 
-        execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee, state_flags);
+    if (op == op::excesses) {
+        throw_if(error::oracles_sender, is_oracles);
+        return (); ;; just accept coins
+    }
+
+    if (op == op::execute_voting) {
+        throw_unless(error::oracles_not_sender, is_oracles);
+
+        execute_voting(sender_address, in_msg_body, query_id, bridge_mint_fee, state_flags, msg_value);
 
     } elseif (op == op::pay_swap) {
 
+        throw_if(error::oracles_sender, is_oracles);
         throw_unless(error::mint_fee_not_matched, msg_value == bridge_mint_fee);
 
         var msg = begin_cell()

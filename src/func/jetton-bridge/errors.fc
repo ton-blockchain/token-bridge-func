@@ -8,6 +8,7 @@ const int error::incorrect_voting_data = 320;
 const int error::decimals_out_of_range = 330;
 
 ;; wrong sender errors
+const int error::oracles_sender = 400;
 const int error::oracles_not_sender = 401;
 const int error::minter_not_sender = 402;
 const int error::bridge_not_sender = 403;
