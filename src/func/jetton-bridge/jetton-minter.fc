@@ -4,6 +4,7 @@
 #include "params.fc";
 #include "op-codes.fc";
 #include "errors.fc";
+#include "messages.fc";
 #include "utils.fc";
 #include "config.fc";
 #include "discovery-params.fc";
@@ -42,10 +43,10 @@ slice zero_address() inline {
     cell state_init = calculate_jetton_wallet_state_init(to_address, my_address(), jetton_wallet_code);
     slice to_wallet_address = calculate_address_by_state_init(state_init);
     var msg = begin_cell()
-            .store_uint(BOUNCEABLE, 6)
+            .store_msg_flags(BOUNCEABLE)
             .store_slice(to_wallet_address)
             .store_coins(amount)
-            .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+            .store_msgbody_prefix_stateinit()
             .store_ref(state_init)
             .store_ref(master_msg);
     send_raw_message(msg.end_cell(), SEND_MODE_REGULAR); ;; revert on errors
@@ -120,10 +121,10 @@ slice zero_address() inline {
         int rest_amount = pair_first(get_balance()) - minter_min_tons_for_storage;
 
         builder msg = begin_cell()
-                    .store_uint(NON_BOUNCEABLE, 6)
-                    .store_uint(4, 3).store_int(-1, 8).store_uint(bridge_address_hash, 256)
+                    .store_msg_flags(NON_BOUNCEABLE)
+                    .store_masterchain_address(bridge_address_hash)
                     .store_coins(rest_amount)
-                    .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                    .store_msgbody_prefix_ref()
                     .store_ref(new_body);
 
         send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
@@ -143,10 +144,10 @@ slice zero_address() inline {
                 : null();
 
         var msg = begin_cell()
-                .store_uint(BOUNCEABLE, 6)
+                .store_msg_flags(BOUNCEABLE)
                 .store_slice(sender_address)
                 .store_coins(0)
-                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+                .store_msgbody_prefix_slice()
                 .store_uint(op::take_wallet_address, 32)
                 .store_uint(query_id, 64);
 

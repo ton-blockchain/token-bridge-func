@@ -1,0 +1,41 @@
+const int BOUNCEABLE = 0x18;
+const int NON_BOUNCEABLE = 0x10;
+
+const int SEND_MODE_REGULAR = 0;
+const int SEND_MODE_PAY_FEES_SEPARETELY = 1;
+const int SEND_MODE_IGNORE_ERRORS = 2;
+const int SEND_MODE_DESTROY = 32;
+const int SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE = 64;
+const int SEND_MODE_CARRY_ALL_BALANCE = 128;
+
+builder store_msg_flags(builder b, int msg_flag) inline { return b.store_uint(msg_flag, 6); }
+
+{-
+  Helpers below fill in default/overwritten values of message layout:
+  Relevant part of TL-B schema:
+  ... other:ExtraCurrencyCollection ihr_fee:Grams fwd_fee:Grams created_lt:uint64 created_at:uint32 = CommonMsgInfoRelaxed;
+  bits      1                               4             4                64                32                            
+  ... init:(Maybe (Either StateInit ^StateInit))  body:(Either X ^X) = Message X;
+  bits      1      1(if prev is true)                   1
+
+-}
+
+builder store_msgbody_prefix_stateinit(builder b) inline { 
+  return b.store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1);
+}
+builder store_msgbody_prefix_slice(builder b) inline { 
+  return b.store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+}
+builder store_msgbody_prefix_ref(builder b) inline { 
+  return b.store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+}
+
+{-
+
+addr_std$10 anycast:(Maybe Anycast) 
+   workchain_id:int8 address:bits256  = MsgAddressInt;
+-}
+
+builder store_masterchain_address(builder b, int address_hash) inline {
+  return b.store_uint(4, 3).store_int(-1, 8).store_uint(address_hash, 256);
+}

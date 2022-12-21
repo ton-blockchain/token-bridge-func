@@ -2,6 +2,7 @@
 #include "params.fc";
 #include "op-codes.fc";
 #include "errors.fc";
+#include "messages.fc";
 #include "utils.fc";
 #include "config.fc";
 #include "jetton-bridge.fc";
@@ -96,10 +97,10 @@
                 .end_cell();
 
         var msg = begin_cell()
-                .store_uint(BOUNCEABLE, 6)
+                .store_msg_flags(BOUNCEABLE)
                 .store_slice(minter_address)
                 .store_coins(bridge_mint_fee)
-                .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+                .store_msgbody_prefix_stateinit()
                 .store_ref(jetton_minter_state_init)
                 .store_ref(master_msg);
 
@@ -111,20 +112,20 @@
         voting_data.end_parse();
 
         var msg = begin_cell() ;; send msg_value from oracles back to prevent withdrawing stakes
-                .store_uint(NON_BOUNCEABLE, 6)
+                .store_msg_flags(NON_BOUNCEABLE)
                 .store_slice(oracles_address)
                 .store_coins(msg_value)
-                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+                .store_msgbody_prefix_slice();
         send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
 
         ;; reserve 100 Toncoins for storage fees
         raw_reserve(100000000000, 2);
 
         var msg = begin_cell() ;; send rewards to specified address
-                .store_uint(NON_BOUNCEABLE, 6)
+                .store_msg_flags(NON_BOUNCEABLE)
                 .store_slice(reward_address)
                 .store_coins(0)
-                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+                .store_msgbody_prefix_slice();
         send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
 
     } elseif (op == op::execute_voting::change_collector) {

@@ -3,6 +3,7 @@
 #include "stdlib.fc";
 #include "params.fc";
 #include "op-codes.fc";
+#include "messages.fc";
 #include "utils.fc";
 #include "errors.fc";
 #include "config.fc";
@@ -69,10 +70,10 @@ This is suitable for most tokens, if you need tokens transferable between workch
   throw_unless(error::malformed_forward_payload, slice_bits(in_msg_body) >= 1);
   slice either_forward_payload = in_msg_body;
   var msg = begin_cell()
-          .store_uint(BOUNCEABLE, 6)
+          .store_msg_flags(BOUNCEABLE)
           .store_slice(to_wallet_address)
           .store_coins(0)
-          .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+          .store_msgbody_prefix_stateinit()
           .store_ref(state_init);
   var msg_body = begin_cell()
           .store_uint(op::internal_transfer, 32)
@@ -140,10 +141,10 @@ This is suitable for most tokens, if you need tokens transferable between workch
             .end_cell();
 
     var msg = begin_cell()
-            .store_uint(NON_BOUNCEABLE, 6) ;; we should not bounce here cause receiver can have uninitialized contract
+            .store_msg_flags(NON_BOUNCEABLE) ;; we should not bounce here cause receiver can have uninitialized contract
             .store_slice(owner_address)
             .store_coins(forward_ton_amount)
-            .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_msgbody_prefix_ref()
             .store_ref(msg_body);
 
     send_raw_message(msg.end_cell(), SEND_MODE_PAY_FEES_SEPARETELY);
@@ -151,10 +152,10 @@ This is suitable for most tokens, if you need tokens transferable between workch
 
   if ((response_address.preload_uint(2) != 0) & (msg_value > 0)) {
     var msg = begin_cell()
-            .store_uint(NON_BOUNCEABLE, 6)
+            .store_msg_flags(NON_BOUNCEABLE)
             .store_slice(response_address)
             .store_coins(msg_value)
-            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_msgbody_prefix_slice()
             .store_uint(op::excesses, 32)
             .store_uint(query_id, 64);
     send_raw_message(msg.end_cell(), SEND_MODE_IGNORE_ERRORS);
@@ -191,10 +192,10 @@ This is suitable for most tokens, if you need tokens transferable between workch
           .end_cell();
 
   var msg = begin_cell()
-          .store_uint(BOUNCEABLE, 6)
+          .store_msg_flags(BOUNCEABLE)
           .store_slice(jetton_master_address)
           .store_coins(0)
-          .store_uint(1, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+          .store_msgbody_prefix_ref()
           .store_ref(msg_body);
 
   send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_REMAINING_MESSAGE_VALUE);
