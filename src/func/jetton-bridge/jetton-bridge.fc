@@ -125,7 +125,7 @@
                 .store_slice(reward_address)
                 .store_coins(0)
                 .store_msgbody_prefix_slice();
-        send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
+        send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE + SEND_MODE_IGNORE_ERRORS);
 
     } elseif (op == op::execute_voting::change_collector) {
 

@@ -19,8 +19,8 @@ const int op::execute_voting::change_collector = 7;
 
 const int op::pay_swap = 8;
 
-(slice, (int)) ~load_op(slice s) inline { return s.load_uint(32); }
-(slice, (int)) ~load_query_id(slice s) inline { return s.load_uint(64); }
+(slice, int) ~load_op(slice s) inline { return s.load_uint(32); }
+(slice, int) ~load_query_id(slice s) inline { return s.load_uint(64); }
 (slice, (int, int)) ~load_body_header(slice s) inline {
   int op = s~load_uint(64);
   int query_id = s~load_uint(64);
