@@ -53,7 +53,7 @@ cell test_minter_content() inline {
 
 slice test_calculate_jetton_wallet_address(cell state_init) inline {
     return begin_cell().store_uint(4, 3)
-            .store_int(workchain(), 8)
+            .store_int(WORKCHAIN, 8)
             .store_uint(cell_hash(state_init), 256)
             .end_cell()
             .begin_parse();
@@ -121,7 +121,7 @@ builder generate_bridge_voting_swap(int op,
                                     int addr, int amount,
                                     cell token_data, int fwd) {
 
-    return generate_internal_message_body(op, query_id).store_uint(op::execute_voting::swap(), 8)
+    return generate_internal_message_body(op, query_id).store_uint(op::execute_voting::swap, 8)
                                                                          .store_uint(chash, 256)
                                                                          .store_uint(idx, 16)
                                                                          .store_uint(addr, 256)
@@ -206,7 +206,7 @@ _ assert_vote_resp(int code, int query_id, slice oracle) {
 int send_execute_voting(int query_id, int msg_value, int addr_hash, int mint_amount, int fwd, slice src_addr, int exp_fail?) impure inline_ref {
 
     int gas_vote  = 0;
-    var vote_req  = generate_bridge_voting_swap(op::execute_voting(),
+    var vote_req  = generate_bridge_voting_swap(op::execute_voting,
                                                    query_id, random(),
                                                    rand(1 << 16),
                                                    addr_hash, mint_amount,
@@ -251,7 +251,7 @@ int send_op(int op, builder body, int query_id, int msg_value, slice src_addr, i
 
 }
 
-int send_execute_swap(int query_id, int msg_value, slice src_addr, int exp_fail?) impure inline {
+int send_pay_swap(int query_id, int msg_value, slice src_addr, int exp_fail?) impure inline {
 
-    return send_op(op::execute_swap(), null(), query_id, msg_value, src_addr, exp_fail?);
+    return send_op(op::pay_swap, null(), query_id, msg_value, src_addr, exp_fail?);
 }
