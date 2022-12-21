@@ -7,7 +7,7 @@ Multisig compiled by `func-0.3.0`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 3 123 testnet-eth-new 1 uf_public_keys_testnet
+fift -s new-multisig.fif -1 3 123 testnet-eth-new 2 uf_public_keys_testnet
 
 __________________________________________________________________________
 Collector compiled by `func-0.3.0`
