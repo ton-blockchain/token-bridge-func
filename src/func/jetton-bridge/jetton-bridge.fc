@@ -2,6 +2,7 @@
 #include "params.fc";
 #include "op-codes.fc";
 #include "errors.fc";
+#include "messages.fc";
 #include "utils.fc";
 #include "config.fc";
 #include "jetton-bridge.fc";
@@ -88,18 +89,17 @@
         (slice minter_address, cell jetton_minter_state_init) = calculate_minter_address(wrapped_token_data);
 
         cell master_msg = begin_cell() ;; mint tokens to wallet address
-                .store_uint(op::mint, 32)
-                .store_uint(query_id, 64)
+                .store_body_header(op::mint, query_id)
                 .store_slice(to_wallet_address) ;; 3 + 8 + 256 = 267 bit
                 .store_coins(mint_jetton_amount) ;; max 124 bit
                 .store_coins(forward_coins_amount) ;; max 124 bit
                 .end_cell();
 
         var msg = begin_cell()
-                .store_uint(BOUNCEABLE, 6)
+                .store_msg_flags(BOUNCEABLE)
                 .store_slice(minter_address)
                 .store_coins(bridge_mint_fee)
-                .store_uint(4 + 2 + 1, 1 + 4 + 4 + 64 + 32 + 1 + 1 + 1)
+                .store_msgbody_prefix_stateinit()
                 .store_ref(jetton_minter_state_init)
                 .store_ref(master_msg);
 
@@ -111,20 +111,20 @@
         voting_data.end_parse();
 
         var msg = begin_cell() ;; send msg_value from oracles back to prevent withdrawing stakes
-                .store_uint(NON_BOUNCEABLE, 6)
+                .store_msg_flags(NON_BOUNCEABLE)
                 .store_slice(oracles_address)
                 .store_coins(msg_value)
-                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+                .store_msgbody_prefix_slice();
         send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
 
         ;; reserve 100 Toncoins for storage fees
         raw_reserve(100000000000, 2);
 
         var msg = begin_cell() ;; send rewards to specified address
-                .store_uint(NON_BOUNCEABLE, 6)
+                .store_msg_flags(NON_BOUNCEABLE)
                 .store_slice(reward_address)
                 .store_coins(0)
-                .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1);
+                .store_msgbody_prefix_slice();
         send_raw_message(msg.end_cell(), SEND_MODE_CARRY_ALL_BALANCE);
 
     } elseif (op == op::execute_voting::change_collector) {
@@ -141,16 +141,22 @@
     }
 }
 
-() emit_log_simple (int event_id, cell data) impure inline {
+() emit_log_simple (int event_id, cell data, int query_id) impure inline {
     var msg = begin_cell()
-        .store_uint (12, 4) ;; ext_out_msg_info$11 src:MsgAddressInt ()
-        .store_uint (1, 2)
-        .store_uint (256, 9)
-        .store_uint(event_id, 256)
-        .store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-        .store_ref(data)
-        .end_cell();
-    send_raw_message(msg, SEND_MODE_REGULAR);
+        .store_uint (12, 4)         ;; ext_out_msg_info$11 src:MsgAddressInt ()
+        .store_uint (1, 2)          ;; addr_extern$01
+        .store_uint (256, 9)        ;; len:(## 9)
+        .store_uint(event_id, 256); ;; external_address:(bits len)
+
+    if(null?(data)) {
+        msg = msg.store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+                 .store_query_id(query_id);
+    } else {
+        msg = msg.store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+                 .store_ref(data);
+    }
+
+    send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
 }
 
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg_body) impure {
@@ -163,8 +169,7 @@
 
     throw_if(error::inbound_message_has_empty_body, in_msg_body.slice_empty?());
 
-    int op = in_msg_body~load_uint(32);
-    int query_id = in_msg_body~load_uint(64);
+    (int op, int query_id) = in_msg_body~load_body_header();
 
     throw_if(error::unknown_op, (op != op::burn_notification) & (op != op::execute_voting) & (op != op::pay_swap) & (op != op::excesses));
 
@@ -189,17 +194,7 @@
 
         throw_if(error::oracles_sender, is_oracles);
         throw_unless(error::mint_fee_not_matched, msg_value == bridge_mint_fee);
-
-        var msg = begin_cell()
-                .store_uint (12, 4) ;; ext_out_msg_info$11 src:MsgAddressInt ()
-                .store_uint (1, 2)
-                .store_uint (256, 9)
-                .store_uint(LOG_SWAP_PAID, 256)
-                .store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-                .store_uint(query_id, 64)
-                .end_cell();
-        send_raw_message(msg, SEND_MODE_REGULAR);
-
+        emit_log_simple (LOG_SWAP_PAID, null(), query_id);
     } elseif (op == op::burn_notification) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -225,7 +220,8 @@
                     .store_uint(jetton_amount, 128) ;; max 124 bits
                     .store_uint(token_address, 160)
                     .store_uint(from_address_hash, 256)
-                    .end_cell()
+                    .end_cell(),
+            null()
         );
     }
 }

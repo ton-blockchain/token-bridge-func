@@ -1,3 +1,5 @@
+#include "messages.fc";
+
 cell pack_jetton_wallet_data(int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {
     return  begin_cell()
             .store_coins(balance)
@@ -78,7 +80,6 @@ cell pack_metadata_value(slice a) inline {
 
 slice encode_number_to_text(int decimals, int radix) {
     builder str = begin_cell();
-    int hex? = ( radix == 16 );
     int ctr  = 0;
     tuple chars =  empty_tuple();
 
@@ -90,7 +91,6 @@ slice encode_number_to_text(int decimals, int radix) {
     } until (decimals == 0);
 
     repeat( ctr ) {
-        int chr = chars.at(ctr - 1);
         str     = str.store_uint(chars.at(ctr - 1), 8);
         ctr    -= 1;
     }
