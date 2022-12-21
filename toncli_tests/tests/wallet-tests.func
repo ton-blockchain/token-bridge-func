@@ -568,17 +568,17 @@ int __test_burn_not_owner() {
 
     set_test_bridge_conf();
 	var   msg_body  = generate_jetton_burn_request( query_id, one_unit * 5, resp_dst, bridge_payload ); ;;Burn 5 jetton units
-	cell  msg	= generate_internal_message_custom( 0, 0, 0, msg_body, non_owner, null(), 0 );
-	int   msg_value = one_unit;
+	cell  msg	    = generate_internal_message_custom( 0, 0, 0, msg_body, non_owner, null(), 0 );
+	int   msg_value = test_bridge_burn_fee;
 
 	;; Should fail with no actions
-	int gas_err	= invoke_method_expect_fail( recv_internal, [ one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
+	int gas_err	= invoke_method_expect_fail( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
 	assert_no_actions();
 
 	;; changing msg source addres to owner to verify error trigger
-	msg		= generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
+	msg	= generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
 
-	var ( gas_success, _ ) = invoke_method( recv_internal, [ one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
+	var ( gas_success, _ ) = invoke_method( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
 
 	return gas_err + gas_success;
 }
@@ -592,18 +592,19 @@ int __test_burn_too_many() {
 
     cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
-	int balance    = get_test_balance();
-	var  msg_body  = generate_jetton_burn_request( query_id, balance + 1, resp_dst, bridge_payload ); ;;Burn balance + 1 jettons
-	cell msg       = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
+	int balance     = get_test_balance();
+	var  msg_body   = generate_jetton_burn_request( query_id, balance + 1, resp_dst, bridge_payload ); ;;Burn balance + 1 jettons
+	cell msg        = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
+	int   msg_value = test_bridge_burn_fee;
 
 	;; Should fail with no actions
-	int gas_err    = invoke_method_expect_fail( recv_internal, [ one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
+	int gas_err    = invoke_method_expect_fail( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
 	assert_no_actions();
 
 	;; Now transfer exactly balance to verify error trigger
 	msg_body       = generate_jetton_burn_request( query_id, balance, resp_dst, bridge_payload );
 
-	var ( gas_success, _ ) = invoke_method( recv_internal, [ one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
+	var ( gas_success, _ ) = invoke_method( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
 
 	return gas_err + gas_success;
 }
@@ -724,7 +725,7 @@ int __test_burn_successfull() {
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
 	int balance         = get_test_balance();
-	int msg_value       = one_unit;
+	int msg_value       = test_bridge_burn_fee;
 	int forward_fee     = one_unit / 10;
 	int forward_amount  = one_unit / 4;
 	int burn_amount     = ( rand( 10 ) + 1 ) * balance / 10;

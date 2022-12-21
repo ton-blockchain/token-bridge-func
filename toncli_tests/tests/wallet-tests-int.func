@@ -105,12 +105,13 @@ int __test_get_wallet_data_burn() {
 	int burn_amount      = ( rand( 10 ) + 1 ) * balance / 10; ;; From 0.1 * balance to 1 * balance
 	int forward_amount   = one_unit / 10;
 	int forward_fee      = one_unit / 100;
+    int msg_value        = test_bridge_burn_fee;
 
     cell bridge_payload  = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 	var  msg_body        = generate_jetton_burn_request( query_id, burn_amount, resp_dst, bridge_payload );
 	cell msg             = generate_internal_message_custom( 0, 0, 0, msg_body, owner, null(), 0 );
 
-	var ( gas_burn, _ )  = invoke_method( recv_internal, [ one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
+	var ( gas_burn, _ )  = invoke_method( recv_internal, [ msg_value, msg_value, msg, msg_body.end_cell().begin_parse() ] );
 
 	var ( gas_after, stack ) = invoke_method( get_wallet_data, [] );
 
