@@ -16,7 +16,7 @@ b>
 */
 
 <b
-  1 32 u, // chain id
+  97 32 u, // chain id
   0xf0d8c9578937bfda05bd4ed5f2cfa14e7cdc267a 160 u, // Token eth addr
   9 8 u, // 9 decimals
   /*
