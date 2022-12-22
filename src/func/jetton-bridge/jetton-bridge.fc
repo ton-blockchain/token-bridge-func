@@ -217,7 +217,7 @@
         emit_log_simple(LOG_BURN, 
             begin_cell() ;; 704 bit
                     .store_uint(destination_address, 160)
-                    .store_uint(jetton_amount, 128) ;; max 124 bits
+                    .store_coins(jetton_amount) ;; max 124 bits
                     .store_uint(token_address, 160)
                     .store_uint(from_address_hash, 256)
                     .end_cell(),
