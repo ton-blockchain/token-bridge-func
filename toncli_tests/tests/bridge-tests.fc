@@ -48,12 +48,11 @@ int __test_bridge_burn_notification_not_minter() {
 
 }
 
-int __test_bridge_burn_notification_success() {
+int test_bridge_burn_notification_success(int burn_amount) {
 
     slice admin_address = set_test_bridge_conf();
 
 	int query_id    = rand( 12345 ) + 1;
-	int burn_amount = one_unit;
     ;; Looking up
     var (int gas_init, stack) = invoke_method(get_bridge_data, []);
 
@@ -87,24 +86,21 @@ int __test_bridge_burn_notification_success() {
     ;; No more excess message
     throw_unless(301, actions.tuple_length() == 1);
 
-    {-
-    No more excess message
-    ;; Testing that action is a message and message mode is 2
-    tuple excess = actions.first();
-    throw_unless(302, excess.first()  == 0);
-    throw_unless(303, excess.third()  == 2);
-
-    ;; Testing excess message body values
-    excess.second().verify_bridge_excess(400, query_id, my_address(), one_unit);
-    -}
-
     tuple log = actions.first();
     throw_unless(500, log.first() == 0);
     throw_unless(500, log.third() == 0);
 
-    log.second().assert_log_message(600, 0xc0470ccf, eth_dst.preload_uint(160), burn_amount, test_token_addr, sender_hash);
+    log.second().assert_log_message_full(600, log_burn, eth_dst.preload_uint(160), burn_amount, test_token_addr, sender_hash);
 
     return gas_init + gas_used;
+}
+
+int __test_bridge_burn_notification_sucess() {
+    return test_bridge_burn_notification_success(one_unit);
+}
+
+int __test_bridge_burn_notification_sucess_max_val() {
+    return test_bridge_burn_notification_success((1 << 120) - 1);
 }
 
 int __test_bridge_voting_not_oracle() {
@@ -116,94 +112,110 @@ int __test_bridge_voting_not_oracle() {
     slice oracle_addr = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
     slice not_oracle  = oracle_addr.generate_different_addr();
 
-    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
-
-    cell minter_code = stack.third();
-    cell wallet_code = stack.fourth();
-
     int addr_hash    = random();
     int mint_amount  = (rand(10) + 1) * one_unit;
-    int fwd          = one_unit * (rand(10) + 1);
-
-    {-
-    var vote_req     = generate_bridge_voting_swap(query_id, random(),
-                                                   rand(1 << 16),
-                                                   addr_hash, mint_amount,
-                                                   content, fwd);
-    var vote_sc      = vote_req.end_cell().begin_parse();
-
-    ;; Should fail since source is not oracle
-    cell msg         = generate_internal_message_custom(0, 0, 0, vote_req, not_oracle, null(), 0);
-    -}
+    int fwd          = rand(test_bridge_mint_fee);
 
     int gas_fail       = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, not_oracle, true);
 
     int gas_success    = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle_addr, false);
 
-    return gas_init + gas_fail + gas_success;
+    return gas_fail + gas_success;
 }
 
-int __test_bridge_exec_swap_low_fee() {
+int __test_bridge_voting_forward_above_burn_fee() {
 
     set_test_bridge_conf();
-
-    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
-
-    cell minter_code = stack.third();
-    cell wallet_code = stack.fourth();
 
 
     int addr_hash    = random();
     int query_id     = rand(12345) + 1;
     int mint_amount  = (rand(10) + 1) * one_unit;
-    int fwd          = 0; ;; one_unit * (rand(10) + 1);
+    int fwd          = rand(100) + test_bridge_mint_fee + 1;
+    int msg_val      = test_bridge_mint_fee;
 
     slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
 
-    int gas_vote     = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
+    ;; Shoul fail due to fwd > test_bridge_mint_fee
+    int gas_fail     = send_execute_voting(query_id, msg_val, addr_hash, mint_amount, fwd, oracle, true);
 
-    assert_vote_resp(300, query_id, oracle);
+    fwd              = rand(test_bridge_mint_fee);
+    int gas_success  = send_execute_voting(query_id, msg_val, addr_hash, mint_amount, fwd, oracle, false);
 
-    int msg_val     = rand(test_bridge_mint_fee);
-    int gas_fail    = send_execute_swap(query_id, msg_val, oracle, true);
-
-    int gas_success = send_execute_swap(query_id, test_bridge_mint_fee, oracle, false);
-
-    return gas_init + gas_vote + gas_fail + gas_success;
-
+    return gas_fail + gas_success;
 }
 
-int __test_bridge_exec_swap_no_forward() {
+int __test_bridge_pay_swap_low_fee() {
 
-    ;; Enough for mint fee but not enough for forward coins amount
     set_test_bridge_conf();
 
-    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
-
-    cell minter_code = stack.third();
-    cell wallet_code = stack.fourth();
-
-
-    int addr_hash    = random();
     int query_id     = rand(12345) + 1;
-    int mint_amount  = (rand(10) + 1) * one_unit;
-    int fwd          = one_unit * (rand(10) + 1);
-    int msg_val      = rand(fwd - test_bridge_mint_fee) + test_bridge_mint_fee; ;; < fwd + test_bridge_mint_fee
+
+    slice src        = generate_internal_address();
+
+    int msg_val      = rand(test_bridge_mint_fee);
+    int gas_fail     = send_pay_swap(query_id, msg_val, src, true);
+
+    int gas_success  = send_pay_swap(query_id, test_bridge_mint_fee, src, false);
+
+    return gas_fail + gas_success;
+
+}
+
+int __test_bridge_pay_swap_high_fee() {
+
+    set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+
+    slice src        = generate_internal_address();
+
+    int msg_val      = rand(10) + test_bridge_mint_fee + 1;
+    int gas_fail     = send_pay_swap(query_id, msg_val, src, true);
+
+    int gas_success  = send_pay_swap(query_id, test_bridge_mint_fee, src, false);
+
+    return gas_fail + gas_success;
+
+}
+
+int __test_bridge_pay_swap_from_oracle() {
+
+    set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+    int msg_val      = test_bridge_mint_fee;
+    int addr_hash    = random();
 
     slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
 
-    int gas_vote     = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
+    ;; Pay swap should fail from oracle
+    int gas_fail     = send_pay_swap(query_id, msg_val, oracle, true);
+    ;; And succeed from regular address
+    slice src        = oracle.generate_different_addr();
+    int gas_success  = send_pay_swap(query_id, msg_val, src, false);
 
-    int gas_fail     = send_execute_swap(query_id, msg_val, oracle, true);
-
-    int gas_success  = send_execute_swap(query_id, fwd + test_bridge_mint_fee, oracle, false);
-
-
-    return gas_init + gas_vote + gas_fail + gas_success;
+    return gas_fail + gas_success;
 }
 
-int __test_bridge_mint_success() {
+int __test_bridge_pay_swap_success() {
+
     set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+    int msg_val      = test_bridge_mint_fee;
+    int addr_hash    = random();
+
+    slice src        = generate_internal_address();
+    int gas_success  = send_pay_swap(query_id, msg_val, src, false);
+
+    assert_log_message_simple(300, log_swap_paid);
+
+    return gas_success;
+}
+
+
+int test_bridge_mint_success(int mint_amount, int exp_fail?) {
 
     var (int gas_init, stack) = invoke_method(get_bridge_data, []);
 
@@ -213,42 +225,56 @@ int __test_bridge_mint_success() {
 
     int addr_hash    = random();
     int query_id     = rand(12345) + 1;
-    int mint_amount  = (rand(10) + 1) * one_unit;
-    int fwd          = one_unit * (rand(10) + 1);
+    int fwd          = rand(test_bridge_mint_fee);
 
     slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
 
-    int gas_vote     = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
-    assert_vote_resp(300, query_id, oracle);
+    int gas_vote     = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, exp_fail?);
 
-    int gas_exec     = send_execute_swap(query_id, fwd + test_bridge_mint_fee, oracle, false);
+    ifnot( exp_fail? ) {
+        tuple actions    = parse_c5();
+        throw_if(300, actions.null?());
+        throw_unless(301, actions.tuple_length() == 2);
 
-    tuple actions    = parse_c5();
-    throw_if(300, actions.null?());
-    throw_unless(301, actions.tuple_length() == 1);
+        tuple mint = actions.first();
+        throw_unless(302, mint.first() == 0);
+        throw_unless(303, mint.third() == 0);
 
-    tuple mint = actions.first();
-    throw_unless(302, mint.first() == 0);
-    throw_unless(303, mint.third() == 64);
+        tuple parsed = mint.second().parse_internal_message().unsafe_tuple();
 
-    tuple parsed = mint.second().parse_internal_message().unsafe_tuple();
+        var (slice to_addr, mint_init) =  test_calculate_minter_address(content, wallet_code, minter_code);
 
-    var (slice to_addr, mint_init) =  test_calculate_minter_address(content, wallet_code, minter_code);
+        throw_unless(304, equal_slices(to_addr, parsed.at(4)));
+        throw_unless(305, test_bridge_mint_fee == parsed.at(5));
 
-    throw_unless(304, equal_slices(to_addr, parsed.at(4)));
-    throw_unless(305, 0 == parsed.at(5));
+        ;; Checking mint message
+        var bs = parsed.at(8);
+        throw_unless(306, op::mint   == bs~load_uint(32));
+        throw_unless(307, query_id   == bs~load_uint(64));
 
-    ;; Checking mint message
-    var bs = parsed.at(8);
-    throw_unless(306, op::mint() == bs~load_uint(32));
-    throw_unless(307, query_id   == bs~load_uint(64));
+        slice wallet_addr = generate_internal_address_with_custom_data(0, 0, addr_hash);
+        throw_unless(308, equal_slices(wallet_addr, bs~load_msg_addr()));
+        throw_unless(309, mint_amount == bs~load_grams());
+        throw_unless(310, fwd         == bs~load_grams());
 
-    slice wallet_addr = generate_internal_address_with_custom_data(0, 0, addr_hash);
-    throw_unless(308, equal_slices(wallet_addr, bs~load_msg_addr()));
-    throw_unless(309, mint_amount == bs~load_grams());
-    throw_unless(310, fwd         == bs~load_grams());
+        ;; Testing thanks message
+        actions.second().assert_thanks_resp(400, query_id, oracle);
+    }
 
-    return gas_init + gas_vote + gas_exec;
+    return gas_init + gas_vote;
+}
+
+int __test_bridge_mint_success() {
+
+    set_test_bridge_conf();
+    return test_bridge_mint_success((rand(10) + 1) * one_unit, false);
+}
+
+int __test_bridge_mint_success_max_val() {
+
+    set_test_bridge_conf();
+
+    return test_bridge_mint_success((1 << 120) - 1, false);
 }
 
 int __test_bridge_get_reward_not_oralce() {
@@ -258,51 +284,72 @@ int __test_bridge_get_reward_not_oralce() {
     slice   oracle      = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
     slice   not_oracle  = oracle.generate_different_addr();
     slice   reward_addr = generate_internal_address();
-    builder reward_body = begin_cell().store_uint(op::execute_voting::get_reward(), 8).store_slice(reward_addr);
+    builder reward_body = begin_cell().store_uint(op::execute_voting::get_reward, 8).store_slice(reward_addr);
 
     int query_id        = rand(12345) + 1;
-    int gas_fail        = send_op(op::execute_voting(), reward_body, query_id, one_unit, not_oracle, true);
+    int gas_fail        = send_op(op::execute_voting, reward_body, query_id, one_unit, not_oracle, true);
 
-    int gas_success     = send_op(op::execute_voting(), reward_body, query_id, one_unit, oracle, false);
+    int gas_success     = send_op(op::execute_voting, reward_body, query_id, one_unit, oracle, false);
 
     return gas_fail + gas_success;
 }
 
-int __test_bridge_get_reward_success() {
-    ;; Just checking expected behaviour
-    set_test_bridge_conf();
+int test_bridge_get_reward_success(int exp_fail?) {
 
     slice   oracle      = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
     slice   reward_addr = generate_internal_address();
-    builder reward_body = begin_cell().store_uint(op::execute_voting::get_reward(), 8).store_slice(reward_addr);
+    builder reward_body = begin_cell().store_uint(op::execute_voting::get_reward, 8).store_slice(reward_addr);
 
     int query_id        = rand(12345) + 1;
-    int gas_reward      = send_op(op::execute_voting(), reward_body, query_id, one_unit, oracle, false);
+    int msg_value       = test_bridge_mint_fee;
+    int gas_reward      = send_op(op::execute_voting, reward_body, query_id, msg_value, oracle, exp_fail?);
 
-    tuple actions       = parse_c5();
-    ;; Expect two actions
-    throw_unless(300, actions.tuple_length() == 2);
+    ifnot( exp_fail? ) {
+        tuple actions       = parse_c5();
+        ;; Expect three actions
+        throw_unless(300, actions.tuple_length() == 3);
 
-    tuple reserve = actions.first();
-    ;; Action type reserve
-    throw_unless(301, reserve.first()  == 2);
-    ;; Reserve amount 100 TON
-    throw_unless(302, reserve.second().first() == 100 * one_unit);
-    ;; Reserve mode 2
-    throw_unless(303, reserve.third()  == 2);
+        ;; Refund message for oracles
+        tuple refund  = actions.first();
+        throw_unless(301, refund.first() == 0);
+        throw_unless(302, refund.third() == mode_regular);
 
-    tuple msg     = actions.second();
-    ;; Action type is message
-    throw_unless(304, msg.first() == 0);
-    ;; Message mode 128
-    throw_unless(305, msg.third() == 128);
+        tuple ref_msg = refund.second().parse_internal_message().unsafe_tuple();
+        ;; Non bounceable
+        throw_unless(303, ref_msg.at(1) == 0);
+        ;; To oracle
+        throw_unless(304, equal_slices(oracle, ref_msg.at(4)));
+        ;; All the msg_value is sent back
+        throw_unless(305, msg_value == ref_msg.at(5));
 
-    ;; Checking that dst address matches supplied reward addr
-    slice dst     = msg.second().parse_internal_message().unsafe_tuple().at(4);
-    throw_unless(305, equal_slices(dst, reward_addr));
-    ;; Message body is not relevant
+        tuple reserve = actions.second();
+        ;; Action type reserve
+        throw_unless(306, reserve.first()  == 2);
+        ;; Reserve amount 100 TON
+        throw_unless(307, reserve.second().first() == 100 * one_unit);
+        ;; Reserve mode 2
+        throw_unless(308, reserve.third()  == 2);
+
+        tuple msg     = actions.third();
+        ;; Action type is message
+        throw_unless(309, msg.first() == mode_regular);
+        ;; Message mode 128
+        throw_unless(310, msg.third() == mode_carry + mode_ignore_errors);
+
+        ;; Checking that dst address matches supplied reward addr
+        slice dst     = msg.second().parse_internal_message().unsafe_tuple().at(4);
+        throw_unless(311, equal_slices(dst, reward_addr));
+        ;; Message body is not relevant
+    }
 
     return gas_reward;
+}
+
+int __test_bridge_get_reward_success() {
+
+    set_test_bridge_conf();
+
+    return test_bridge_get_reward_success(false);
 }
 
 int __test_bridge_change_collector_not_oracle() {
@@ -312,20 +359,18 @@ int __test_bridge_change_collector_not_oracle() {
     slice   oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
     slice   not_oracle = oracle.generate_different_addr();
     slice   new_addr   = generate_internal_address();
-    builder chg_body   = begin_cell().store_uint(op::execute_voting::change_collector(), 8).store_slice(new_addr);
+    builder chg_body   = begin_cell().store_uint(op::execute_voting::change_collector, 8).store_slice(new_addr);
 
     int query_id       = rand(12345) + 1;
-    int gas_fail       = send_op(op::execute_voting(), chg_body, query_id, one_unit, not_oracle, true);
+    int gas_fail       = send_op(op::execute_voting, chg_body, query_id, one_unit, not_oracle, true);
 
-    int gas_success    = send_op(op::execute_voting(), chg_body, query_id, one_unit, oracle, false);
+    int gas_success    = send_op(op::execute_voting, chg_body, query_id, one_unit, oracle, false);
 
     return gas_fail + gas_success;
 
 }
 
-int __test_bridge_change_collector_success() {
-
-    set_test_bridge_conf();
+int test_bridge_change_collector_success(int exp_fail?) {
 
     var (gas_before, stack) = invoke_method(get_bridge_data, []);
     int wc_old   = stack.first();
@@ -339,180 +384,82 @@ int __test_bridge_change_collector_success() {
     } until( addr_new != addr_old );
 
     slice collector  = generate_internal_address_with_custom_data(0, wc_new, addr_new);
-    builder chg_body = begin_cell().store_uint(op::execute_voting::change_collector(), 8).store_slice(collector);
+    builder chg_body = begin_cell().store_uint(op::execute_voting::change_collector, 8).store_slice(collector);
     slice   oracle   = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
 
 
     int query_id     = rand(12345) + 1;
-    int gas_change   = send_op(op::execute_voting(), chg_body, query_id, one_unit, oracle, false);
+    int gas_change   = send_op(op::execute_voting, chg_body, query_id, one_unit, oracle, exp_fail?);
 
-    ;; Testing change happened
-    var (gas_after, stack) = invoke_method(get_bridge_data, []);
-    throw_unless(300, wc_new   == stack.first());
-    throw_unless(301, addr_new == stack.second());
+    ifnot ( exp_fail? ) {
+        assert_thanks_only(400, query_id, oracle);
+
+        ;; Testing change happened
+        var (gas_after, stack) = invoke_method(get_bridge_data, []);
+        gas_change += gas_after;
+
+        throw_unless(300, wc_new   == stack.first());
+        throw_unless(301, addr_new == stack.second());
+    }
 
 
-    return gas_before + gas_change + gas_after;
+    return gas_before + gas_change;
 }
 
-int __test_bridge_clear_queries_not_oracle() {
 
+int __test_bridge_change_collector_success() {
     set_test_bridge_conf();
-
-    slice   oracle       = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
-    slice   not_oracle   = oracle.generate_different_addr();
-
-    int query_id         = now();
-    builder clear_body   = begin_cell().store_uint(op::execute_voting::clear_queries(), 8).store_uint(query_id + 1, 64);
-
-    int mint_amount      = (rand(10) + 1) * one_unit;
-    int addr_hash        = random();
-    int fwd              = 0;
-    int gas_vote         = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
-    int gas_fail         = send_op(op::execute_voting(), clear_body, query_id, one_unit, not_oracle, true);
-
-    int gas_success      = send_op(op::execute_voting(), clear_body, query_id, one_unit, oracle, false);
-
-    return gas_vote + gas_fail + gas_success;
-
+    return test_bridge_change_collector_success(false);
 }
 
-{-
-  Queries are accessed based on query id keys.
-  ONLY query with query id LOWER than supplied in op::execute_voting::clear_queries
-  will be cleared.
--}
-
-
-int __test_bridge_clear_queries_lower() {
-
+int __test_bridge_excess_from_oracle() {
     set_test_bridge_conf();
 
-    slice   oracle       = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    int query_id        = rand(12345) + 1;
+    int msg_value       = (rand(10) + 1) * one_unit;
 
-    int query_id         = now();
-    int mint_amount      = (rand(10) + 1) * one_unit;
-    int addr_hash        = random();
-    int fwd              = 0;
-    int gas_vote         = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
+    builder excess_body = generate_internal_message_body(op_excesses, query_id);
+    slice   oracle      = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    cell    msg         = generate_internal_message_custom(0, 0, 0, excess_body, oracle, null(), 0);
+    slice   body_sc     = excess_body.end_cell().begin_parse();
 
-    var (gas_before, stack) = invoke_method(has_query, [query_id]);
-    ;; Expect new query to exist
-    throw_unless(300, stack.first());
+    ;; Excess message fail from oracle address
+    int gas_fail         = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, body_sc]);
 
-    ;; Lower than existing query id. Expect left untouched
-    builder lower_body   = begin_cell().store_uint(op::execute_voting::clear_queries(), 8).store_uint(query_id - rand(10) + 1 , 64);
-    int gas_lower        = send_op(op::execute_voting(), lower_body, query_id, one_unit, oracle, false);
+    slice not_oralce     = oracle.generate_different_addr();
+    msg                  = generate_internal_message_custom(0, 0, 0, excess_body, not_oralce, null(), 0);
+    (int gas_success, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, body_sc]);
 
-    var (gas_after, stack) = invoke_method(has_query, [query_id]);
-    throw_unless(301, stack.first());
-
-    return gas_vote + gas_lower + gas_after;
+    return gas_fail + gas_success;
 }
 
-int __test_bridge_clear_queries_equal() {
+int __test_bridge_op_suspended() {
 
-    set_test_bridge_conf();
+    ;; All vote ops are suspended
+    set_bridge_conf_custom(op_suspend);
 
-    slice   oracle       = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    ;; Expect mint to fail
+    int mint   = test_bridge_mint_success((rand(10) + 1) * one_unit, true);
+    ;; Expect get_reward to fail
+    int reward = test_bridge_get_reward_success(true);
+    ;; Expect collector change to fail
+    int coll_change = test_bridge_change_collector_success(true);
 
-    int query_id         = now();
-    int mint_amount      = (rand(10) + 1) * one_unit;
-    int addr_hash        = random();
-    int fwd              = 0;
-    int gas_vote         = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
-
-    var (gas_before, stack) = invoke_method(has_query, [query_id]);
-    ;; Expect new query to exist
-    throw_unless(300, stack.first());
-
-    ;; Exactly same query id. Expect left untouched
-    builder eq_body   = begin_cell().store_uint(op::execute_voting::clear_queries(), 8).store_uint(query_id, 64);
-    int gas_equal     = send_op(op::execute_voting(), eq_body, query_id, one_unit, oracle, false);
-
-    var (gas_after, stack) = invoke_method(has_query, [query_id]);
-    throw_unless(301, stack.first());
-
-    return gas_vote + gas_equal + gas_after;
+    return mint + reward + coll_change;
 }
 
-int __test_bridge_clear_queries_larger() {
-    ;; This is the successfull case, where query is actually removed
+int __test_bridge_op_mint_suspended() {
 
-    set_test_bridge_conf();
+    ;; Only mint op is suspended
+    set_bridge_conf_custom(op_suspend_mint);
 
-    slice   oracle       = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    ;; Expect mint to fail
+    int mint   = test_bridge_mint_success((rand(10) + 1) * one_unit, true);
+    ;; Expect get_reward to succeed
+    int reward = test_bridge_get_reward_success(false);
+    ;; Expect collector change to succeed
+    int coll_change = test_bridge_change_collector_success(false);
 
-    int query_id         = now();
-    int mint_amount      = (rand(10) + 1) * one_unit;
-    int addr_hash        = random();
-    int fwd              = 0;
-    int gas_vote         = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
+    return mint + reward + coll_change;
 
-    var (gas_before, stack) = invoke_method(has_query, [query_id]);
-    ;; Expect new query to exist
-    throw_unless(300, stack.first());
-
-    ;; Larger than actual query id. Expect removal
-    builder clear_body   = begin_cell().store_uint(op::execute_voting::clear_queries(), 8).store_uint(query_id + rand(100) + 1, 64);
-    int gas_clear        = send_op(op::execute_voting(), clear_body, query_id, one_unit, oracle, false);
-
-    var (gas_after, stack) = invoke_method(has_query, [query_id]);
-    ;; Expect this query to be removed
-    throw_if(301, stack.first());
-
-    return gas_vote + gas_clear;
-}
-
-int __test_bridge_clear_queries_multi() {
-    {-
-      Testing case where there are multiple queries registered.
-      One is larged than the other.
-      Clear query in between those value.
-      Expecting removal or lower one
-      and presence of larger one.
-    -}
-
-    set_test_bridge_conf();
-
-    slice   oracle       = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
-
-
-    int query_id         = now();
-    int large_id         = query_id + rand(100) + 1000;
-    int mint_amount      = (rand(10) + 1) * one_unit;
-    int addr_hash        = random();
-    int fwd              = 0;
-    ;; Registering two queries with different ids
-    int gas_first        = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
-    int gas_second       = send_execute_voting(large_id, one_unit, addr_hash, mint_amount, fwd, oracle, false);
-    int gas_lookup       = 0;
-
-    ;; Expect both new queries to be present
-    var (gas_before, stack) = invoke_method(has_query, [query_id]);
-    throw_unless(300, stack.first());
-    gas_before += gas_lookup;
-
-    var (gas_before, stack) = invoke_method(has_query, [large_id]);
-    throw_unless(301, stack.first());
-    gas_lookup += gas_before;
-
-    ;; From query_id + 1 to large_id
-    int clear_id = rand(large_id - query_id - 1) + query_id + 1;
-
-    builder clear_body   = begin_cell().store_uint(op::execute_voting::clear_queries(), 8).store_uint(clear_id, 64);
-    int gas_clear        = send_op(op::execute_voting(), clear_body, query_id, one_unit, oracle, false);
-
-
-
-    ;; Expect lower one to be removed
-    var (gas_after, stack) = invoke_method(has_query, [query_id]);
-    throw_if(302, stack.first());
-    gas_lookup += gas_after;
-
-    ;; Larger one should be present
-    var (gas_after, stack) = invoke_method(has_query, [large_id]);
-    throw_unless(303, stack.first());
-
-    return gas_first + gas_second + gas_lookup + gas_clear;
 }
