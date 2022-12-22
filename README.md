@@ -19,7 +19,44 @@ Bridge supports all ERC-20-compatible tokens with:
 
     ERC-20 [has](https://eips.ethereum.org/EIPS/eip-20) `uint8` decimals so all valid ERC-20 tokens are supported. 
 
-## Architecture
+## Description
+
+### Transfer ERC-20 EVM token -> TON Jetton
+
+1. User calls `lock` method on the [EVM smart contract](https://github.com/ton-blockchain/token-bridge-solidity), indicating the address of the ERC-20 token, the token amount and destination TON address to receive jettons.
+
+2. EVM smart contract emits `Lock` event.
+
+3.
+    ```
+    export const MULTISIG_QUERY_TIMEOUT = 30 * 24 * 60 * 60; // 30 days
+    const VERSION = 2;
+    const timeout = evmTransaction.blockTime + MULTISIG_QUERY_TIMEOUT + VERSION;
+
+    const queryId = timeout << 32 + first 32 bits of sha256(evmTransaction.blockHash + '_' + evmTransaction.transactionHash + '_' + evmTransaction.logIndex)
+    ```
+
+3. User pays `bridgeMintFee` in Toncoins by sending `op::pay_swap` to `jetton-bridge` TON smart contract with corresponding `queryId`.
+
+4. Oracles detects new `Lock` event and `swap_paid` log, check its validity and submits votes to `multisig` TON smart contract with corresponding `queryId`.
+
+5. When enough oracles votes are collected in the multisig, the multisig sends `op::execute_voting::swap` message to the `jetton-bridge`.
+
+6. `jetton-bridge` creates (if it doesn't already exist) `jetton-minter` smart contract corresponding this ERC-20 token and fill-up user's `jetton-wallet`.
+
+### Return
+
+1. User send `burn` message to his `jetton-wallet`, indicating the destination EVM address to receive ERC-20 tokens.
+
+2. `jetton-wallet` sends `burn-notification` to `jetton-minter` and `jetton-minter` forward it to `jetton-bridge`.
+
+3. `jetton-bridge` produce `burn` log on valid `burn-notification`.
+
+4. Oracles detects new `burn` log, check its validity and submits EVM-signatures to `votes-collector` TON Smart Contract.
+
+5. When enough oracles signature are collected, user call `unlock` method of the EVM smart contract, indicating these signatures, and get ERC-20 tokens.
+
+## Comparison with Toncoin bridge
 
 Token bridge based on code of [Toncoin Bridge](https://github.com/ton-blockchain/bridge-func/tree/81e4e0d53b288b0f07855e9d779d227e3dc1c94a) and [Standard Jetton](https://github.com/ton-blockchain/token-contract/tree/2d411595a4f25fba43997a2e140a203c140c728a).
 
