@@ -1,7 +1,7 @@
 "TonUtil.fif" include
 "Asm.fif" include
 
-1000000000 10 * constant initial_balance // Wallet balance 
+0 constant initial_balance // Wallet balance 
 "build/jetton_wallet.fif" constant wallet_code
 
 /* 
