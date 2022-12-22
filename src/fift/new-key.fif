@@ -1,5 +1,0 @@
-#!/usr/bin/env fift -s
-"TonUtil.fif" include
-
-"./artifacts/multisig.seed" load-generate-keypair constant private_key
-."Public key = " dup 256 B>u@ pubkey>$ type cr
