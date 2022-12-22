@@ -1,0 +1,34 @@
+cd src/func/jetton-bridge/
+
+__________________________________________________________________________
+eth_testnet tag
+__________________________________________________________________________
+Multisig compiled by `func-0.3.0`
+
+func -o multisig-code.fif -SPA multisig.fc
+
+fift -s new-multisig.fif -1 3 123 testnet-eth-new 2 uf_public_keys_testnet
+
+__________________________________________________________________________
+Collector compiled by `func-0.3.0`
+
+func -o votes-collector.fif -SPA votes-collector.fc
+
+fift -s new-collector.fif
+
+__________________________________________________________________________
+Jetton-wallet compiled by `func-0.3.0`
+
+func -o jetton-wallet.fif -SPA jetton-wallet.fc
+
+__________________________________________________________________________
+Jetton-minter compiled by `func-0.3.0`
+
+func -o jetton-minter.fif -SPA jetton-minter.fc
+
+__________________________________________________________________________
+Bridge compiled by `func-0.3.0`
+
+func -o bridge_code2.fif -SPA jetton-bridge.fc
+
+fift -s new-bridge.fif

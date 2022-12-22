@@ -1,0 +1,42 @@
+#!/usr/bin/env fift -s
+"TonUtil.fif" include
+
+// 0 ton - 4 bit
+
+<b 0 Gram, bbits .s
+
+// 1 nanoton - 12 bit
+
+<b 1 Gram, bbits .s
+
+// 1 ton - 36 bit
+
+<b 1000000000 Gram, bbits .s
+
+// 5 ton - 44 bit
+
+<b 5000000000 Gram, bbits .s
+
+// 10 ton - 44 bit
+
+<b 10000000000 Gram, bbits .s
+
+// 5B ton - 68 bit (decimals 9)
+
+<b 5000000000000000000 Gram, bbits .s
+
+// 120M ether - 92 bit (decimals 18)
+
+<b 120000000000000000000000000 Gram, bbits .s
+
+// 1 trillion BUSD - 108 bits (decimals 18)
+
+<b 1000000000000000000000000000000 Gram, bbits .s
+
+// max Varuint 16 value - 2^120 -1 - 124 bit
+
+<b 1 120 << 1 - Gram, bbits .s
+
+// overflow error
+
+<b 1 120 << Gram, bbits .s

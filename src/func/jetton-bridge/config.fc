@@ -1,12 +1,13 @@
-;; bridge_address: MsgAdrr, oracles_address: MsgAddr, oracles: Dict, state_flags: uint8, burn_bridge_fee: Coins
-(int, int, cell, int, int) get_jetton_bridge_config() impure inline_ref {
-    cell bridge_config = config_param(79);
+(int, int, cell, int, int, int, int, int, int, int) get_jetton_bridge_config() impure inline_ref {
+    cell bridge_config = config_param(CONFIG_PARAM_ID);
     if (bridge_config.cell_null?()) {
-        bridge_config = config_param(-79);
+        bridge_config = config_param(- CONFIG_PARAM_ID);
     }
     throw_if(666, bridge_config.cell_null?());
 
     slice slice_config = bridge_config.begin_parse();
+
+    int prefix = slice_config~load_uint(8);
 
     int bridge_address_hash = slice_config~load_uint(256);
 
@@ -15,9 +16,25 @@
     ;; key: uint256 (public key) value: uint256 (eth address)
     cell oracles = slice_config~load_dict();
 
+    ;; state_flags & 1 - burn (TON->EVM transfer) suspended
+    ;; state_flags & 2 - swaps (EVM->TON transfer) suspended
+    ;; state_flags & 4 - all governance actions suspended
+    ;; state_flags & 8 - collector signature removal suspended
     int state_flags = slice_config~load_uint(8);
-    
-    int burn_bridge_fee = slice_config~load_coins();
 
-    return (bridge_address_hash, oracles_address_hash, oracles, state_flags, burn_bridge_fee);
+    slice prices = slice_config~load_ref().begin_parse();
+
+    int bridge_burn_fee = prices~load_coins(); ;; ATTENTION: burn_fee must include burn network fees (at least 2 * fwd_fee + 3 * gas_consumption + minter_min_tons_for_storage)
+
+    int bridge_mint_fee = prices~load_coins(); ;; ATTENTION: mint_fee must include mint network fees (at least 2 * fwd_fee + 3 * gas_consumption + minter_min_tons_for_storage + wallet_min_tons_for_storage)
+
+    int wallet_min_tons_for_storage = prices~load_coins();
+
+    int wallet_gas_consumption = prices~load_coins();
+
+    int minter_min_tons_for_storage = prices~load_coins();
+
+    int discover_gas_consumption = prices~load_coins();
+
+    return (bridge_address_hash, oracles_address_hash, oracles, state_flags, bridge_burn_fee, bridge_mint_fee, wallet_min_tons_for_storage, wallet_gas_consumption, minter_min_tons_for_storage, discover_gas_consumption);
 }

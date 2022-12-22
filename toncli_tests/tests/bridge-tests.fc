@@ -1,0 +1,465 @@
+#pragma version >=0.2.0;
+
+#include "utils/constants.func";
+#include "utils/op-codes.func";
+#include "utils/helpers.func";
+
+
+
+int __test_bridge_burn_notification_not_minter() {
+
+    slice admin_address = set_test_bridge_conf();
+
+	int query_id = rand( 12345 ) + 1;
+	int burn_amount = one_unit;
+    ;; Looking up
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code = stack.third();
+    cell wallet_code = stack.fourth();
+
+	;; Making sure that source address would be valid jetton address
+    cell content   = test_minter_content();
+
+	slice sender   = generate_internal_address_with_custom_data(0, 0, random());
+    (slice src, _) = test_calculate_minter_address(content, wallet_code, minter_code);
+    slice  bad_src = src.generate_different_addr();
+
+     {-
+      This is what usually comming to the jetton-minter and then forwarded to bridge.
+      When doing so, minter content is attached as a ref cell
+    -}
+
+
+    slice eth_dst = generate_eth_addr();
+	var msg_body  = generate_bridge_burn_notification( query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
+    var body_sc   = msg_body.end_cell().begin_parse();
+
+	cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, bad_src, null(), 0);
+
+    ;; Non-minter address should fail
+	(int gas_fail ) = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, body_sc]);
+
+    ;; New message with correct src should succeed
+    msg                   = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
+	(int gas_success, _ ) = invoke_method(recv_internal, [one_unit, one_unit, msg, body_sc]);
+
+    return gas_init + gas_fail + gas_success;
+
+}
+
+int test_bridge_burn_notification_success(int burn_amount) {
+
+    slice admin_address = set_test_bridge_conf();
+
+	int query_id    = rand( 12345 ) + 1;
+    ;; Looking up
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code  = stack.third();
+    cell wallet_code  = stack.fourth();
+
+	;; Making sure that source address would be valid jetton address
+    cell content      = test_minter_content();
+
+    int   sender_hash = random();
+	slice sender      = generate_internal_address_with_custom_data(0, 0, sender_hash);
+    (slice src, _)    = test_calculate_minter_address(content, wallet_code, minter_code);
+
+     {-
+      This is what usually comming to the jetton-minter and then forwarded to bridge.
+      When doing so, minter content is attached as a ref cell
+    -}
+
+
+    slice eth_dst = generate_eth_addr();
+	var msg_body  = generate_bridge_burn_notification(query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
+
+	cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
+
+	(int gas_used, _) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+
+    tuple actions = parse_c5();
+
+    ;; Expect excess and log messages
+    throw_if(300, actions.null?());
+    ;; No more excess message
+    throw_unless(301, actions.tuple_length() == 1);
+
+    tuple log = actions.first();
+    throw_unless(500, log.first() == 0);
+    throw_unless(500, log.third() == 0);
+
+    log.second().assert_log_message_full(600, log_burn, eth_dst.preload_uint(160), burn_amount, test_token_addr, sender_hash);
+
+    return gas_init + gas_used;
+}
+
+int __test_bridge_burn_notification_sucess() {
+    return test_bridge_burn_notification_success(one_unit);
+}
+
+int __test_bridge_burn_notification_sucess_max_val() {
+    return test_bridge_burn_notification_success((1 << 120) - 1);
+}
+
+int __test_bridge_voting_not_oracle() {
+
+    set_test_bridge_conf();
+
+	int query_id = rand( 12345 ) + 1;
+
+    slice oracle_addr = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    slice not_oracle  = oracle_addr.generate_different_addr();
+
+    int addr_hash    = random();
+    int mint_amount  = (rand(10) + 1) * one_unit;
+    int fwd          = rand(test_bridge_mint_fee);
+
+    int gas_fail       = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, not_oracle, true);
+
+    int gas_success    = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle_addr, false);
+
+    return gas_fail + gas_success;
+}
+
+int __test_bridge_voting_forward_above_burn_fee() {
+
+    set_test_bridge_conf();
+
+
+    int addr_hash    = random();
+    int query_id     = rand(12345) + 1;
+    int mint_amount  = (rand(10) + 1) * one_unit;
+    int fwd          = rand(100) + test_bridge_mint_fee + 1;
+    int msg_val      = test_bridge_mint_fee;
+
+    slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+
+    ;; Shoul fail due to fwd > test_bridge_mint_fee
+    int gas_fail     = send_execute_voting(query_id, msg_val, addr_hash, mint_amount, fwd, oracle, true);
+
+    fwd              = rand(test_bridge_mint_fee);
+    int gas_success  = send_execute_voting(query_id, msg_val, addr_hash, mint_amount, fwd, oracle, false);
+
+    return gas_fail + gas_success;
+}
+
+int __test_bridge_pay_swap_low_fee() {
+
+    set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+
+    slice src        = generate_internal_address();
+
+    int msg_val      = rand(test_bridge_mint_fee);
+    int gas_fail     = send_pay_swap(query_id, msg_val, src, true);
+
+    int gas_success  = send_pay_swap(query_id, test_bridge_mint_fee, src, false);
+
+    return gas_fail + gas_success;
+
+}
+
+int __test_bridge_pay_swap_high_fee() {
+
+    set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+
+    slice src        = generate_internal_address();
+
+    int msg_val      = rand(10) + test_bridge_mint_fee + 1;
+    int gas_fail     = send_pay_swap(query_id, msg_val, src, true);
+
+    int gas_success  = send_pay_swap(query_id, test_bridge_mint_fee, src, false);
+
+    return gas_fail + gas_success;
+
+}
+
+int __test_bridge_pay_swap_from_oracle() {
+
+    set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+    int msg_val      = test_bridge_mint_fee;
+    int addr_hash    = random();
+
+    slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+
+    ;; Pay swap should fail from oracle
+    int gas_fail     = send_pay_swap(query_id, msg_val, oracle, true);
+    ;; And succeed from regular address
+    slice src        = oracle.generate_different_addr();
+    int gas_success  = send_pay_swap(query_id, msg_val, src, false);
+
+    return gas_fail + gas_success;
+}
+
+int __test_bridge_pay_swap_success() {
+
+    set_test_bridge_conf();
+
+    int query_id     = rand(12345) + 1;
+    int msg_val      = test_bridge_mint_fee;
+    int addr_hash    = random();
+
+    slice src        = generate_internal_address();
+    int gas_success  = send_pay_swap(query_id, msg_val, src, false);
+
+    assert_log_message_simple(300, log_swap_paid);
+
+    return gas_success;
+}
+
+
+int test_bridge_mint_success(int mint_amount, int exp_fail?) {
+
+    var (int gas_init, stack) = invoke_method(get_bridge_data, []);
+
+    cell minter_code = stack.third();
+    cell wallet_code = stack.fourth();
+    cell content     = test_minter_content();
+
+    int addr_hash    = random();
+    int query_id     = rand(12345) + 1;
+    int fwd          = rand(test_bridge_mint_fee);
+
+    slice oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+
+    int gas_vote     = send_execute_voting(query_id, one_unit, addr_hash, mint_amount, fwd, oracle, exp_fail?);
+
+    ifnot( exp_fail? ) {
+        tuple actions    = parse_c5();
+        throw_if(300, actions.null?());
+        throw_unless(301, actions.tuple_length() == 2);
+
+        tuple mint = actions.first();
+        throw_unless(302, mint.first() == 0);
+        throw_unless(303, mint.third() == 0);
+
+        tuple parsed = mint.second().parse_internal_message().unsafe_tuple();
+
+        var (slice to_addr, mint_init) =  test_calculate_minter_address(content, wallet_code, minter_code);
+
+        throw_unless(304, equal_slices(to_addr, parsed.at(4)));
+        throw_unless(305, test_bridge_mint_fee == parsed.at(5));
+
+        ;; Checking mint message
+        var bs = parsed.at(8);
+        throw_unless(306, op::mint   == bs~load_uint(32));
+        throw_unless(307, query_id   == bs~load_uint(64));
+
+        slice wallet_addr = generate_internal_address_with_custom_data(0, 0, addr_hash);
+        throw_unless(308, equal_slices(wallet_addr, bs~load_msg_addr()));
+        throw_unless(309, mint_amount == bs~load_grams());
+        throw_unless(310, fwd         == bs~load_grams());
+
+        ;; Testing thanks message
+        actions.second().assert_thanks_resp(400, query_id, oracle);
+    }
+
+    return gas_init + gas_vote;
+}
+
+int __test_bridge_mint_success() {
+
+    set_test_bridge_conf();
+    return test_bridge_mint_success((rand(10) + 1) * one_unit, false);
+}
+
+int __test_bridge_mint_success_max_val() {
+
+    set_test_bridge_conf();
+
+    return test_bridge_mint_success((1 << 120) - 1, false);
+}
+
+int __test_bridge_get_reward_not_oralce() {
+
+    set_test_bridge_conf();
+
+    slice   oracle      = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    slice   not_oracle  = oracle.generate_different_addr();
+    slice   reward_addr = generate_internal_address();
+    builder reward_body = begin_cell().store_uint(op::execute_voting::get_reward, 8).store_slice(reward_addr);
+
+    int query_id        = rand(12345) + 1;
+    int gas_fail        = send_op(op::execute_voting, reward_body, query_id, one_unit, not_oracle, true);
+
+    int gas_success     = send_op(op::execute_voting, reward_body, query_id, one_unit, oracle, false);
+
+    return gas_fail + gas_success;
+}
+
+int test_bridge_get_reward_success(int exp_fail?) {
+
+    slice   oracle      = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    slice   reward_addr = generate_internal_address();
+    builder reward_body = begin_cell().store_uint(op::execute_voting::get_reward, 8).store_slice(reward_addr);
+
+    int query_id        = rand(12345) + 1;
+    int msg_value       = test_bridge_mint_fee;
+    int gas_reward      = send_op(op::execute_voting, reward_body, query_id, msg_value, oracle, exp_fail?);
+
+    ifnot( exp_fail? ) {
+        tuple actions       = parse_c5();
+        ;; Expect three actions
+        throw_unless(300, actions.tuple_length() == 3);
+
+        ;; Refund message for oracles
+        tuple refund  = actions.first();
+        throw_unless(301, refund.first() == 0);
+        throw_unless(302, refund.third() == mode_regular);
+
+        tuple ref_msg = refund.second().parse_internal_message().unsafe_tuple();
+        ;; Non bounceable
+        throw_unless(303, ref_msg.at(1) == 0);
+        ;; To oracle
+        throw_unless(304, equal_slices(oracle, ref_msg.at(4)));
+        ;; All the msg_value is sent back
+        throw_unless(305, msg_value == ref_msg.at(5));
+
+        tuple reserve = actions.second();
+        ;; Action type reserve
+        throw_unless(306, reserve.first()  == 2);
+        ;; Reserve amount 100 TON
+        throw_unless(307, reserve.second().first() == 100 * one_unit);
+        ;; Reserve mode 2
+        throw_unless(308, reserve.third()  == 2);
+
+        tuple msg     = actions.third();
+        ;; Action type is message
+        throw_unless(309, msg.first() == mode_regular);
+        ;; Message mode 128
+        throw_unless(310, msg.third() == mode_carry + mode_ignore_errors);
+
+        ;; Checking that dst address matches supplied reward addr
+        slice dst     = msg.second().parse_internal_message().unsafe_tuple().at(4);
+        throw_unless(311, equal_slices(dst, reward_addr));
+        ;; Message body is not relevant
+    }
+
+    return gas_reward;
+}
+
+int __test_bridge_get_reward_success() {
+
+    set_test_bridge_conf();
+
+    return test_bridge_get_reward_success(false);
+}
+
+int __test_bridge_change_collector_not_oracle() {
+
+    set_test_bridge_conf();
+
+    slice   oracle     = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    slice   not_oracle = oracle.generate_different_addr();
+    slice   new_addr   = generate_internal_address();
+    builder chg_body   = begin_cell().store_uint(op::execute_voting::change_collector, 8).store_slice(new_addr);
+
+    int query_id       = rand(12345) + 1;
+    int gas_fail       = send_op(op::execute_voting, chg_body, query_id, one_unit, not_oracle, true);
+
+    int gas_success    = send_op(op::execute_voting, chg_body, query_id, one_unit, oracle, false);
+
+    return gas_fail + gas_success;
+
+}
+
+int test_bridge_change_collector_success(int exp_fail?) {
+
+    var (gas_before, stack) = invoke_method(get_bridge_data, []);
+    int wc_old   = stack.first();
+    int addr_old = stack.second();
+    ;; Just in case going to change everything;
+    int addr_new = addr_old;
+    int wc_new   = ~ wc_old;
+
+    do {
+        addr_new = random();
+    } until( addr_new != addr_old );
+
+    slice collector  = generate_internal_address_with_custom_data(0, wc_new, addr_new);
+    builder chg_body = begin_cell().store_uint(op::execute_voting::change_collector, 8).store_slice(collector);
+    slice   oracle   = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+
+
+    int query_id     = rand(12345) + 1;
+    int gas_change   = send_op(op::execute_voting, chg_body, query_id, one_unit, oracle, exp_fail?);
+
+    ifnot ( exp_fail? ) {
+        assert_thanks_only(400, query_id, oracle);
+
+        ;; Testing change happened
+        var (gas_after, stack) = invoke_method(get_bridge_data, []);
+        gas_change += gas_after;
+
+        throw_unless(300, wc_new   == stack.first());
+        throw_unless(301, addr_new == stack.second());
+    }
+
+
+    return gas_before + gas_change;
+}
+
+
+int __test_bridge_change_collector_success() {
+    set_test_bridge_conf();
+    return test_bridge_change_collector_success(false);
+}
+
+int __test_bridge_excess_from_oracle() {
+    set_test_bridge_conf();
+
+    int query_id        = rand(12345) + 1;
+    int msg_value       = (rand(10) + 1) * one_unit;
+
+    builder excess_body = generate_internal_message_body(op_excesses, query_id);
+    slice   oracle      = generate_internal_address_with_custom_data(0, -1, test_oracle_addr);
+    cell    msg         = generate_internal_message_custom(0, 0, 0, excess_body, oracle, null(), 0);
+    slice   body_sc     = excess_body.end_cell().begin_parse();
+
+    ;; Excess message fail from oracle address
+    int gas_fail         = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, body_sc]);
+
+    slice not_oralce     = oracle.generate_different_addr();
+    msg                  = generate_internal_message_custom(0, 0, 0, excess_body, not_oralce, null(), 0);
+    (int gas_success, _) = invoke_method(recv_internal, [msg_value, msg_value, msg, body_sc]);
+
+    return gas_fail + gas_success;
+}
+
+int __test_bridge_op_suspended() {
+
+    ;; All vote ops are suspended
+    set_bridge_conf_custom(op_suspend);
+
+    ;; Expect mint to fail
+    int mint   = test_bridge_mint_success((rand(10) + 1) * one_unit, true);
+    ;; Expect get_reward to fail
+    int reward = test_bridge_get_reward_success(true);
+    ;; Expect collector change to fail
+    int coll_change = test_bridge_change_collector_success(true);
+
+    return mint + reward + coll_change;
+}
+
+int __test_bridge_op_mint_suspended() {
+
+    ;; Only mint op is suspended
+    set_bridge_conf_custom(op_suspend_mint);
+
+    ;; Expect mint to fail
+    int mint   = test_bridge_mint_success((rand(10) + 1) * one_unit, true);
+    ;; Expect get_reward to succeed
+    int reward = test_bridge_get_reward_success(false);
+    ;; Expect collector change to succeed
+    int coll_change = test_bridge_change_collector_success(false);
+
+    return mint + reward + coll_change;
+
+}

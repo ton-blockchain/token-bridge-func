@@ -1,0 +1,25 @@
+const int one_unit = 1000000000; ;; 10^9
+
+;; These are not standardized values each Jetton can have it's own fee guidelines
+const int jetton_min_storage      = 10000000; ;;0.01 TON
+const int jetton_gas_fee          = 10000000; ;;0.01 TON
+const int discover_gas_fee        = 20000000; ;;0.02 TON
+const int test_bridge_burn_fee    = 100000000;
+const int test_bridge_mint_fee    = 100000000;
+const int test_bridge_addr        = 0x3d4726f2293933ca6453cbfe4ba911393827f86052eeabef6fb4022343c727b0;
+const int test_token_addr         = 0xf0d8c9578937bfda05bd4ed5f2cfa14e7cdc267a;
+const int test_oracle_addr        = 0x3d64b30657d319e7fd567715754e255a69be769a02134b8bd82698d6f6b17c2b;
+
+const slice test_expected_url     = "https://bridge.ton.org/token/97/0xf0d8c9578937bfda05bd4ed5f2cfa14e7cdc267a.json";
+const slice test_expected_img     = "https://bridge.ton.org/token/97/0xf0d8c9578937bfda05bd4ed5f2cfa14e7cdc267a.png";
+const slice test_expected_dec     = "9";
+
+const int mode_regular       = 0;
+const int mode_carry         = 128;
+const int mode_ignore_errors = 2;
+
+const int log_swap_paid      = 0xc0550ccf;
+const int log_burn           = 0xc0470ccf;
+
+const int op_suspend         = 4;
+const int op_suspend_mint    = 2;

@@ -1,15 +1,35 @@
 ;; global errors
-int error::inbound_message_has_empty_body() asm "200 PUSHINT";
-int error::unknown_op() asm "210 PUSHINT";
-int error::unknown_execute_voting_op() asm "211 PUSHINT";
-int error::unknown_radix() asm "212 PUSHINT";
+const int error::inbound_message_has_empty_body = 200;
+const int error::unknown_op = 0xffff;
+const int error::unknown_execute_voting_op = 211;
 
 ;; data errors
-int error::incorrect_voting_data() asm "320 PUSHINT";
-int error::decimals_out_of_range() asm "330 PUSHINT";
+const int error::incorrect_voting_data = 320;
+const int error::decimals_out_of_range = 330;
 
 ;; wrong sender errors
-int error::oracles_not_sender() asm "401 PUSHINT";
-int error::minter_not_sender() asm "402 PUSHINT";
-int error::bridge_not_sender() asm "403 PUSHINT";
-int error::owner_not_sender() asm "404 PUSHINT";
+const int error::oracles_sender = 400;
+const int error::oracles_not_sender = 401;
+const int error::minter_not_sender = 402;
+const int error::bridge_not_sender = 403;
+const int error::owner_not_sender = 404;
+const int error::operation_suspended = 704;
+
+;; jetton wallet errors
+const int error::unauthorized_transfer = 705;
+const int error::not_enough_funds = 706;
+const int error::unauthorized_incoming_transfer = 707;
+const int error::malformed_forward_payload = 708;
+const int error::not_enough_tons = 709;
+const int error::burn_fee_not_matched = 707;
+
+;; jetton minter errors
+const int error::discovery_fee_not_matched = 75;
+
+;; jetton bridge errors
+const int error::wrong_external_chain_id = 410;
+const int error::wrong_sender_workchain = 413;
+const int error::mint_fee_not_matched = 407;
+const int error::mint_fee_less_forward = 399;
+
+

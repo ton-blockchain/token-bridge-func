@@ -1,116 +1,99 @@
-cell pack_string(slice a, slice b) {
-    builder result = begin_cell().store_uint(0, 8).store_slice(a);
-    if (~ null?(b)) {
-        if (slice_bits(a) + slice_bits(b) <= (1023 - 8)) {
-            result = result.store_slice(b);
-        } else {
-            result = result.store_ref(begin_cell().store_slice(b).end_cell());
-        }
-    }
-    return result.end_cell();
-}
+#include "messages.fc";
 
-cell pack_jetton_wallet_data(int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code, cell wrapped_token_data) inline {
+cell pack_jetton_wallet_data(int balance, slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {
     return  begin_cell()
             .store_coins(balance)
             .store_slice(owner_address)
             .store_slice(jetton_master_address)
             .store_ref(jetton_wallet_code)
-            .store_ref(wrapped_token_data)
-           .end_cell();
+            .end_cell();
 }
 
-cell calculate_jetton_wallet_state_init(slice owner_address, slice jetton_master_address, cell jetton_wallet_code, cell wrapped_token_data) inline {
+cell calculate_jetton_wallet_state_init(slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {
     return begin_cell()
-          .store_uint(0, 2)
-          .store_dict(jetton_wallet_code)
-          .store_dict(pack_jetton_wallet_data(0, owner_address, jetton_master_address, jetton_wallet_code, wrapped_token_data))
-          .store_uint(0, 1)
-         .end_cell();
+            .store_uint(0, 2)
+            .store_dict(jetton_wallet_code)
+            .store_dict(pack_jetton_wallet_data(0, owner_address, jetton_master_address, jetton_wallet_code))
+            .store_uint(0, 1)
+            .end_cell();
 }
 
-slice calculate_jetton_wallet_address(cell state_init) inline {
+slice create_address(int wc, int address_hash) inline {
     return begin_cell().store_uint(4, 3)
-                     .store_int(workchain(), 8)
-                     .store_uint(cell_hash(state_init), 256)
-                     .end_cell()
-                     .begin_parse();
+            .store_int(wc, 8)
+            .store_uint(address_hash, 256)
+            .end_cell()
+            .begin_parse();
 }
 
-slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_master_address, cell jetton_wallet_code, cell wrapped_token_data) inline {
-    return calculate_jetton_wallet_address(calculate_jetton_wallet_state_init(owner_address, jetton_master_address, jetton_wallet_code, wrapped_token_data));
+slice calculate_address_by_state_init(cell state_init) inline {
+    return create_address(WORKCHAIN, cell_hash(state_init));
 }
 
-(int, int, int, slice, slice) unpack_wrapped_token_data(cell data) inline {
-    slice slice_data = data.begin_parse();
-    
-    (
-        int chain_id,
-        int token_address,
-        int token_decimals,
-        cell token_name,
-        cell token_symbol
-    ) = (
-        slice_data~load_uint(32),
-        slice_data~load_uint(256),
-        slice_data~load_uint(8),
-        slice_data~load_ref(),
-        slice_data~load_ref()
-    );
-   
-    return (
-        chain_id,
-        token_address,
-        token_decimals,
-        token_name.begin_parse(),
-        token_symbol.begin_parse()
-    );
+slice calculate_user_jetton_wallet_address(slice owner_address, slice jetton_master_address, cell jetton_wallet_code) inline {
+    return calculate_address_by_state_init(calculate_jetton_wallet_state_init(owner_address, jetton_master_address, jetton_wallet_code));
 }
 
 () send_receipt_message(addr, ans_tag, query_id, body, grams, mode) impure inline_ref {
-    ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool src:MsgAddress -> 011000
     var msg = begin_cell()
-    .store_uint(0x18, 6)
-    .store_slice(addr)
-    .store_grams(grams)
-    .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
-    .store_uint(ans_tag, 32)
-    .store_uint(query_id, 64);
+            .store_uint(NON_BOUNCEABLE, 6)
+            .store_slice(addr)
+            .store_grams(grams)
+            .store_uint(0, 1 + 4 + 4 + 64 + 32 + 1 + 1)
+            .store_uint(ans_tag, 32)
+            .store_uint(query_id, 64);
     if (body >= 0) {
         msg~store_uint(body, 256);
     }
     send_raw_message(msg.end_cell(), mode);
 }
 
-slice calculate_address_by_init_state(cell state_init) inline {
-    return begin_cell().store_uint(4, 3)
-        .store_int(-1, 8)
-        .store_uint(cell_hash(state_init), 256)
-        .end_cell()
-        .begin_parse();
+;; LIMITS:
+;; chainId: uint32 (it seems EVM chainId is uint256, but for our cases 32 bits is enough https://chainlist.org/)
+;; token address in EVM network: 160 bit (an Ethereum address is a 42-character hexadecimal address derived from the last 20 bytes of the public key controlling the account with 0x appended in front. e.g., 0x71C7656EC7ab88b098defB751B7401B5f6d8976F - https://info.etherscan.com/what-is-an-ethereum-address)
+;; decimals: uint8 (ERC-20 has uint8 decimals - https://eips.ethereum.org/EIPS/eip-20)
+(int, int, int) unpack_wrapped_token_data(cell data) inline {
+    slice slice_data = data.begin_parse();
+
+    (
+        int chain_id,
+        int token_address,
+        int token_decimals
+    ) = (
+        slice_data~load_uint(32),
+        slice_data~load_uint(160),
+        slice_data~load_uint(8)
+    );
+    slice_data.end_parse();
+
+    return (
+        chain_id,
+        token_address,
+        token_decimals
+    );
 }
 
-(int, int) encode_number_to_text(int decimals, int radix) impure inline_ref {
-    int len = 0;
-    int value = 0;
-    int mult = 1;
+;; https://github.com/ton-blockchain/TEPs/blob/master/text/0064-token-data-standard.md#data-serialization
+cell pack_metadata_value(slice a) inline {
+    return begin_cell().store_uint(0, 8).store_slice(a).end_cell();
+}
 
-    throw_if(error::unknown_radix(), (radix != 10) & (radix != 16));
-    
+slice encode_number_to_text(int decimals, int radix) {
+    builder str = begin_cell();
+    int ctr  = 0;
+    tuple chars =  empty_tuple();
+
     do {
-        int base = 48;
-            (decimals, int res) = decimals.divmod(radix);
-        if (res < 10) {
-            value = value + (res + base) * mult;
-            mult = mult * 256;
-            len = len + 1;
-        } elseif (res >= 10) {
-            base += 39; ;; 7 + 26 + 6 skip capital letters and symbols
-            value = value + (res + base) * mult;
-            mult = mult * 256;
-            len = len + 1;
-        } 
+        (decimals, int rem) = decimals /% radix;
+
+        chars~tpush( rem >= 10 ? 87 + rem : 48 + rem);
+        ctr += 1;
     } until (decimals == 0);
-    
-    return (len, value);
+
+    repeat( ctr ) {
+        str     = str.store_uint(chars.at(ctr - 1), 8);
+        ctr    -= 1;
+    }
+
+    return str.end_cell().begin_parse();
 }

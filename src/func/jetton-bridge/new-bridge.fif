@@ -1,0 +1,29 @@
+#!/usr/bin/env fift -s
+"Asm.fif" include 
+"TonUtil.fif" include 
+
+<{ SETCP0 ACCEPT
+   "bridge_code2.fif" include PUSHREF SETCODE
+}>c constant code
+
+"jetton-wallet.fif" include constant jetton_wallet_code
+"jetton-minter.fif" include constant jetton_minter_code
+
+<b
+   0 "votes-collector.fif" include hashu Addr, // collector_address
+   jetton_minter_code ref,
+   jetton_wallet_code ref,
+   dictnew dict,
+b> constant storage
+
+code storage null <b b{0011} s, 3 roll ref, rot ref, swap dict, b> constant StateInit
+
+StateInit hashu -1 swap 2dup 2constant contract_addr
+."new bridge address = " 2dup .addr cr
+."Non-bounceable address (for init): " 2dup 5 .Addr cr
+."Bounceable address (for later access): " 4 .Addr cr
+
+<b b{1000100} s, contract_addr addr, b{000011} s, StateInit ref, b{0} s, b> dup constant extmessage
+2 boc+>B
+"bridge-create.boc" tuck B>file
+."(Saved bridge creating query to file " type .")" cr

@@ -1,0 +1,14 @@
+#!/usr/bin/env fift -s
+"Asm.fif" include 
+"TonUtil.fif" include 
+
+"build-collector.fif" include constant StateInit
+StateInit hashu 0 swap 2dup 2constant contract_addr
+."new collector address = " 2dup .addr cr
+."Non-bounceable address (for init): " 2dup 5 .Addr cr
+."Bounceable address (for later access): " 4 .Addr cr
+
+<b b{1000100} s, contract_addr addr, b{000011} s, StateInit ref, b{0} s, b> dup constant extmessage
+2 boc+>B
+"votes-collector-create.boc" tuck B>file
+."(Saved collector creating query to file " type .")" cr
