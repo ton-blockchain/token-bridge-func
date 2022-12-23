@@ -37,9 +37,14 @@ cell load_data() inline_ref {
             signatures = new_dict();
         }
     }
+
+	if (signature.slice_size() == 520 / 8) {
     int secp_key = key~load_uint(256);
     int success? = signatures~udict_add?(256, secp_key, signature);
     throw_unless(324, success?);
+    } else {
+    throw_unless(326, false);
+    }
     builder new_voting_data = begin_cell()
             .store_uint(now(), 32)
             .store_uint(oracles_address, 256)
