@@ -65,14 +65,19 @@ cell load_data() inline_ref {
         if (external_ids.slice_data_empty?()) {
             external_ids = external_ids.preload_ref().begin_parse();
         }
+		
+        if (external_ids.slice_size() >= 256 / 8) {
         int voting_id = external_ids~load_uint(256);
         (cell external_votings', slice voting, int voting_found?) = external_votings.udict_delete_get?(256, voting_id);
         if (voting_found?) {
-            int last_update = voting~load_uint(32);
-            if (bound > last_update) {
-                ;; remove only old votings
-                external_votings = external_votings';
-            }
+        int last_update = voting~load_uint(32);
+        if (bound > last_update) {
+        ;; remove only old votings
+         external_votings = external_votings';
+                                  }
+                            }
+        } else {
+        throw_unless(333, false);
         }
     }
 
