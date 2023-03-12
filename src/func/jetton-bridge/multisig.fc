@@ -189,8 +189,8 @@ _ unpack_owner_info(slice cs) inline_ref {
 
   int query_id = in_msg~load_uint(64);
 
-  (int cnt, int bits) = calc_boc_size(0, 0, in_msg);
-  throw_if(40, (cnt > 8) | (bits > 2048));
+  (int msg_cnt, int msg_bits) = calc_boc_size(0, 0, in_msg);
+  throw_if(40, (msg_cnt > 8) | (msg_bits > 2048));
 
   (slice query, var found?) = pending_queries.udict_get?(64, query_id);
 
