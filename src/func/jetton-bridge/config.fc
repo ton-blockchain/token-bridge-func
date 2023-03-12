@@ -3,7 +3,7 @@
     if (bridge_config.cell_null?()) {
         bridge_config = config_param(- CONFIG_PARAM_ID);
     }
-    throw_if(666, bridge_config.cell_null?());
+    throw_if(error::no_bridge_config, bridge_config.cell_null?());
 
     slice slice_config = bridge_config.begin_parse();
 
@@ -26,7 +26,7 @@
 
     int bridge_burn_fee = prices~load_coins(); ;; ATTENTION: burn_fee must include burn network fees (at least 2 * fwd_fee + 3 * gas_consumption + minter_min_tons_for_storage)
 
-    int bridge_mint_fee = prices~load_coins(); ;; ATTENTION: mint_fee must include mint network fees (at least 2 * fwd_fee + 3 * gas_consumption + minter_min_tons_for_storage + wallet_min_tons_for_storage)
+    int bridge_mint_fee = prices~load_coins(); ;; ATTENTION: mint_fee must include mint network fees (at least 2 * fwd_fee + 3 * gas_consumption + minter_min_tons_for_storage + wallet_min_tons_for_storage) and forward_coins_amount
 
     int wallet_min_tons_for_storage = prices~load_coins();
 

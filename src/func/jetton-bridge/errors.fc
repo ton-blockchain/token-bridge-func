@@ -21,7 +21,7 @@ const int error::not_enough_funds = 706;
 const int error::unauthorized_incoming_transfer = 707;
 const int error::malformed_forward_payload = 708;
 const int error::not_enough_tons = 709;
-const int error::burn_fee_not_matched = 707;
+const int error::burn_fee_not_matched = 710;
 
 ;; jetton minter errors
 const int error::discovery_fee_not_matched = 75;
@@ -32,4 +32,4 @@ const int error::wrong_sender_workchain = 413;
 const int error::mint_fee_not_matched = 407;
 const int error::mint_fee_less_forward = 399;
 
-
+const int error::no_bridge_config = 666;

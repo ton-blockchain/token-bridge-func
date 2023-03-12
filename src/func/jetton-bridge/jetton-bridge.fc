@@ -5,12 +5,13 @@
 #include "messages.fc";
 #include "utils.fc";
 #include "config.fc";
-#include "jetton-bridge.fc";
 
 ;; collector_address: MsgAddress jetton_minter_code:^Cell jetton_wallet_code:^Cell
 (slice, cell, cell) load_data() inline_ref {
     slice slice_data = get_data().begin_parse();
-    return (slice_data~load_msg_addr(), slice_data~load_ref(), slice_data~load_ref());
+    (slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) = (slice_data~load_msg_addr(), slice_data~load_ref(), slice_data~load_ref());
+    slice_data.end_parse();
+    return (collector_address, jetton_minter_code, jetton_wallet_code);
 }
 
 () save_data(slice collector_address, cell jetton_minter_code, cell jetton_wallet_code) impure inline_ref {

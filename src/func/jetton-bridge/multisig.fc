@@ -125,7 +125,7 @@ _ unpack_owner_info(slice cs) inline_ref {
     (int bridge_address, int oracles_address) = get_bridge_config();
     (_, int my_addr) = parse_std_addr(my_address());
     var (mode, msg', wc, addr, flags) = parse_msg(msg);
-    int is_bounceable = flags & 2;
+    int is_bounceable = flags & 2 == 2;
     if ( ((wc == -1) & (addr == bridge_address) & is_bounceable) | (oracles_address != my_addr) ) {
       send_raw_message(msg', mode);
     }
@@ -154,6 +154,13 @@ _ unpack_owner_info(slice cs) inline_ref {
 }
 
 () recv_internal(cell in_msg_cell, slice in_msg) impure {
+  var cs = in_msg_cell.begin_parse();
+  var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool
+  if (flags & 1) {
+    ;; ignore all bounced messages
+    return ();
+  }
+
   ;; empty message triggers init
   if (slice_empty?(in_msg)) {
     return try_init();
@@ -240,8 +247,6 @@ _ unpack_owner_info(slice cs) inline_ref {
     set_data(pack_state(pending_queries, owner_infos, last_cleaned, k, n, wallet_id, lock_until));
   }
 
-  var cs = in_msg_cell.begin_parse();
-  cs~skip_bits(4);
   slice s_addr = cs~load_msg_addr();
   var msg = begin_cell().store_uint(0x18, 6)
           .store_slice(s_addr)
