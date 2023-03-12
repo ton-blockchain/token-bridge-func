@@ -49,7 +49,7 @@ _ unpack_owner_info(slice cs) inline_ref {
   return (cs~load_uint(256), cs~load_uint(8));
 }
 
-(int, int) check_signatures(cell public_keys, cell signatures, int hash, int cnt_bits) inline_ref {
+(int, int) check_signatures(cell public_keys, cell signatures, int hash, int cnt_bits) impure inline_ref {
   int cnt = 0;
 
   do {
@@ -89,7 +89,7 @@ _ unpack_owner_info(slice cs) inline_ref {
   wc~impure_touch();
 }
 
-(int, int, int, slice) unpack_query_data(slice in_msg, int n, slice query, var found?, int root_i) inline_ref {
+(int, int, int, slice) unpack_query_data(slice in_msg, int n, slice query, var found?, int root_i) impure inline_ref {
   if (found?) {
     throw_unless(35, query~load_int(1));
     (int creator_i, int cnt, int cnt_bits, slice msg) = (query~load_uint(8), query~load_uint(8), query~load_uint(n), query);
@@ -116,7 +116,7 @@ _ unpack_owner_info(slice cs) inline_ref {
   set_data(pack_state(pending_queries, owner_infos, 1, k, n, wallet_id, lock_until));
 }
 
-() recv_external() {
+() recv_external() impure {
   try_init();
 }
 
@@ -125,7 +125,7 @@ _ unpack_owner_info(slice cs) inline_ref {
     (int bridge_address, int oracles_address) = get_bridge_config();
     (_, int my_addr) = parse_std_addr(my_address());
     var (mode, msg', wc, addr, flags) = parse_msg(msg);
-    int is_bounceable = flags & 2 == 2;
+    int is_bounceable = (flags & 2) == 2;
     if ( ((wc == -1) & (addr == bridge_address) & is_bounceable) | (oracles_address != my_addr) ) {
       send_raw_message(msg', mode);
     }
