@@ -53,10 +53,10 @@
         (op != op::execute_voting::get_reward) &
         (op != op::execute_voting::change_collector));
 
-    throw_if(error::operation_suspended, state_flags & 4);
+    throw_if(error::operation_suspended, state_flags & STATE_GOVERNANCE_SUSPENDED);
 
     if (op == op::execute_voting::swap) {
-        throw_if(error::operation_suspended, state_flags & 2);
+        throw_if(error::operation_suspended, state_flags & STATE_SWAPS_SUSPENDED);
         (
             int ext_chain_hash,
             int internal_index, 
@@ -83,7 +83,7 @@
 
         throw_unless(error::wrong_external_chain_id, chain_id == MY_CHAIN_ID);
 
-        slice to_wallet_address = create_address(WORKCHAIN, addr_hash);
+        slice to_address = create_address(WORKCHAIN, addr_hash);
 
         throw_unless(error::mint_fee_less_forward, bridge_mint_fee > forward_coins_amount);
 
@@ -91,7 +91,7 @@
 
         cell master_msg = begin_cell() ;; mint tokens to wallet address
                 .store_body_header(op::mint, query_id)
-                .store_slice(to_wallet_address) ;; 3 + 8 + 256 = 267 bit
+                .store_slice(to_address) ;; 3 + 8 + 256 = 267 bit
                 .store_coins(mint_jetton_amount) ;; max 124 bit
                 .store_coins(forward_coins_amount) ;; max 124 bit
                 .end_cell();
@@ -133,9 +133,9 @@
         collector_address = voting_data~load_msg_addr();
         voting_data.end_parse();
 
-    }
+        save_data(collector_address, jetton_minter_code, jetton_wallet_code);
 
-    save_data(collector_address, jetton_minter_code, jetton_wallet_code);
+    }
 
     if (op != op::execute_voting::get_reward) {
         send_receipt_message(oracles_address, 0x10000 + 9, query_id, 0, 0, 64); ;; thanks

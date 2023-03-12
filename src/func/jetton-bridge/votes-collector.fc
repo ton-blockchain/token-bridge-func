@@ -101,7 +101,7 @@ cell load_data() inline_ref {
 
     if (op == 6) {  ;; remove old swaps
         (_, _, _, int state_flags, _, _, _, _, _, _) = get_jetton_bridge_config();
-        throw_if( error::operation_suspended, state_flags & 8);
+        throw_if( error::operation_suspended, state_flags & STATE_COLLECTOR_SIGNATURE_REMOVAL_SUSPENDED);
         return remove_outdated_votings(s_addr, query_id, in_msg);
     }
 }

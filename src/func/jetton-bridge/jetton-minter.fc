@@ -74,7 +74,6 @@ slice zero_address() inline {
 
     (int total_supply, cell content, cell jetton_wallet_code) = load_data();
 
-    ;; bridge_address_hash, oracles_address_hash, oracles, state_flags, burn_bridge_fee
     (int bridge_address_hash, int oracles_address_hash, _, int state_flags, int bridge_burn_fee, int bridge_mint_fee, int wallet_min_tons_for_storage, int wallet_gas_consumption, int minter_min_tons_for_storage, int discover_gas_consumption) = get_jetton_bridge_config();
     (int sender_wc, int sender_address_hash) = parse_std_addr(sender_address);
 
