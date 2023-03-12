@@ -1,7 +1,7 @@
-const STATE_BURN_SUSPENDED = 1; ;; state_flags & 1 - burn (TON->EVM transfer) suspended
-const STATE_SWAPS_SUSPENDED = 2; ;; state_flags & 2 - swaps (EVM->TON transfer) suspended
-const STATE_GOVERNANCE_SUSPENDED = 4; ;; state_flags & 4 - all governance actions suspended
-const STATE_COLLECTOR_SIGNATURE_REMOVAL_SUSPENDED = 8; ;; state_flags & 8 - collector signature removal suspended
+const int STATE_BURN_SUSPENDED = 1; ;; state_flags & 1 - burn (TON->EVM transfer) suspended
+const int STATE_SWAPS_SUSPENDED = 2; ;; state_flags & 2 - swaps (EVM->TON transfer) suspended
+const int STATE_GOVERNANCE_SUSPENDED = 4; ;; state_flags & 4 - all governance actions suspended
+const int STATE_COLLECTOR_SIGNATURE_REMOVAL_SUSPENDED = 8; ;; state_flags & 8 - collector signature removal suspended
 
 (int, int, cell, int, int, int, int, int, int, int) get_jetton_bridge_config() impure inline_ref {
     cell bridge_config = config_param(CONFIG_PARAM_ID);
