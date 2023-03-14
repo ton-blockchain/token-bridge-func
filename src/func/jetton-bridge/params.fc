@@ -2,6 +2,8 @@ const int CONFIG_PARAM_ID = 79;
 const int MY_CHAIN_ID = 97;
 const int LOG_BURN = 0xc0470ccf;
 const int LOG_SWAP_PAID = 0xc0550ccf;
+const int LOG_MINT_ON_MINTER = 0xc0660ccf;
+const int LOG_BURN_ON_MINTER = 0xc0770ccf;
 
 const int WORKCHAIN = 0;
 

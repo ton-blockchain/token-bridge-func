@@ -142,24 +142,6 @@
     }
 }
 
-() emit_log_simple (int event_id, cell data, int query_id) impure inline {
-    var msg = begin_cell()
-        .store_uint (12, 4)         ;; ext_out_msg_info$11 src:MsgAddressInt ()
-        .store_uint (1, 2)          ;; addr_extern$01
-        .store_uint (256, 9)        ;; len:(## 9)
-        .store_uint(event_id, 256); ;; external_address:(bits len)
-
-    if(null?(data)) {
-        msg = msg.store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-                 .store_query_id(query_id);
-    } else {
-        msg = msg.store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-                 .store_ref(data);
-    }
-
-    send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
-}
-
 () recv_internal(int msg_value, cell in_msg_cell, slice in_msg_body) impure {
     var cs = in_msg_cell.begin_parse();
     var flags = cs~load_uint(4);  ;; int_msg_info$0 ihr_disabled:Bool bounce:Bool bounced:Bool

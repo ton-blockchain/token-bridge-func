@@ -97,7 +97,16 @@ slice zero_address() inline {
                 .end_cell();
 
         mint_tokens(to_address, jetton_wallet_code, rest_amount, master_msg);
-        save_data(total_supply + jetton_amount, content, jetton_wallet_code);
+        int new_total_supply = total_supply + jetton_amount;
+        save_data(new_total_supply, content, jetton_wallet_code);
+
+        emit_log_simple(LOG_MINT_ON_MINTER,
+            begin_cell()
+                .store_coins(new_total_supply)
+                .end_cell(),
+            null()
+        );
+
         return ();
     }
 
@@ -108,7 +117,8 @@ slice zero_address() inline {
         throw_unless(error::owner_not_sender,
                 equal_slices(calculate_user_jetton_wallet_address(from_address, my_address(), jetton_wallet_code), sender_address)
         );
-        save_data(total_supply - jetton_amount, content, jetton_wallet_code);
+        int new_total_supply = total_supply - jetton_amount;
+        save_data(new_total_supply, content, jetton_wallet_code);
 
         cell new_body = begin_cell()
                 .store_slice(in_msg_body_copy)
@@ -125,6 +135,13 @@ slice zero_address() inline {
                     .store_ref(new_body);
 
         send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
+
+        emit_log_simple(LOG_BURN_ON_MINTER,
+                begin_cell()
+                        .store_coins(new_total_supply)
+                        .end_cell(),
+                null()
+        );
 
         return ();
     }
