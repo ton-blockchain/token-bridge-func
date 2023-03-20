@@ -182,7 +182,7 @@ tuple assert_log_message_simple(int code, int event, tuple log) impure inline {
 
         throw_if(code, actions.null?());
         throw_unless(code + 1, actions.tuple_length() == 1);
-        tuple log = actions.first();
+        log = actions.first();
     }
 
     ;; Is message
