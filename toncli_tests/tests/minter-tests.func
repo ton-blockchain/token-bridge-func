@@ -130,7 +130,7 @@ int test_mint(int mint_amount, int exp_fail?) {
 
 	    ;; Expect single message
 	    tuple actions	    = parse_c5();
-	    throw_unless(600, actions.tuple_length() == 1);
+	    throw_unless(600, actions.tuple_length() == 2); ;;Expect mint log to be emited
 
 	    ( int action_type, cell sent_msg, int mode ) = actions.at(0).untriple();
 	    throw_unless(601, action_type == 0);
@@ -154,6 +154,15 @@ int test_mint(int mint_amount, int exp_fail?) {
 			gas_success += lookup_after;
 	    throw_unless(604, total_supply + mint_amount == new_supply);
       throw_unless(605, msg_val - jetton_min_storage);
+
+      ;; Now let's test the log message tag
+      tuple parsed = assert_log_message_simple(610, log_mint, actions.second());
+
+      ;; And log contents
+      slice body   = parsed.at(5);
+      throw_unless(620, body~load_coins() == new_supply);
+      throw_unless(621, body.slice_empty?());
+
     }
 
 	return gas_failed + gas_success;
