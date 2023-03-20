@@ -186,7 +186,7 @@ int __test_mint_overflow() {
     return mint_success + mint_fail;
 }
 
-int test_burn_notification(int burn_amount, int exp_fail?) {
+int test_burn_notification(int burn_amount, slice src, int exp_fail?) {
 	{-
 	  burn_notification query_id:uint64 amount:(VarUInteger 16)
 	       sender:MsgAddress response_destination:MsgAddress
@@ -197,20 +197,25 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 	  2) Send excess message to the response_destination.
 
 	-}
-  slice admin_address = set_test_bridge_conf();
+    slice admin_address = set_test_bridge_conf();
+
 	var ( gas_used, total_supply, content, code ) = load_test_data();
 
 	int query_id    = rand( 1337 ) + 1;
 	;; Making sure that source address would be valid jetton address
 
 	slice sender    = generate_internal_address_with_custom_data( 0, 0, random() );
-	slice src	      = calculate_user_jetton_wallet_address( sender, my_address(), code );
+
+    if(src.null?()) {
+	    src = calculate_user_jetton_wallet_address( sender, my_address(), code );
+    }
+
 	var msg_body    = generate_jetton_burn_notification( query_id, burn_amount, sender, admin_address );
 	cell msg        = generate_internal_message_custom( 0, 0, 0, msg_body, src, null(), 0);
 
     if ( exp_fail? ) {
-      gas_used    += invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
-			assert_no_actions();
+        gas_used    += invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+	    assert_no_actions();
     }
     else {
       var (gas_success, _ ) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
@@ -245,11 +250,19 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 	return gas_used;
 }
 
+int __test_burn_notification_not_wallet() {
+    int mint_amount = (rand(100) + 1) * one_unit;
+    int mint_gas    = test_mint(mint_amount, false);
+    int burn_gas    = test_burn_notification(mint_amount / 10, generate_internal_address(), true);
+
+    return mint_gas + burn_gas;
+}
+
 int __test_burn_notification_success() {
 
     int mint_amount = (rand(100) + 1) * one_unit;
     int mint_gas    = test_mint(mint_amount, false);
-    int burn_gas    = test_burn_notification(mint_amount / 10, false);
+    int burn_gas    = test_burn_notification(mint_amount / 10, null(), false);
 
     return mint_gas + burn_gas;
 }
@@ -258,7 +271,7 @@ int __test_burn_notification_success_max_val() {
     int mint_amount = (1 << 120) - 1;
 
     int mint_gas    = test_mint(mint_amount, false);
-    int burn_gas    = test_burn_notification(mint_amount, false);
+    int burn_gas    = test_burn_notification(mint_amount, null(), false);
 
     return mint_gas + burn_gas;
 
