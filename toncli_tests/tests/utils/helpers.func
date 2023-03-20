@@ -175,12 +175,15 @@ _ assert_log_message_full(cell msg, int code, int event, int exp_dst, int jetton
 }
 
 
-_ assert_log_message_simple(int code, int event) impure inline {
-    tuple actions    = parse_c5();
+tuple assert_log_message_simple(int code, int event, tuple log) impure inline {
 
-    throw_if(code, actions.null?());
-    throw_unless(code + 1, actions.tuple_length() == 1);
-    tuple log = actions.first();
+    if(log.null?()) {
+        tuple actions    = parse_c5();
+
+        throw_if(code, actions.null?());
+        throw_unless(code + 1, actions.tuple_length() == 1);
+        tuple log = actions.first();
+    }
 
     ;; Is message
     throw_unless(code + 2, log.first() == 0);
@@ -192,7 +195,7 @@ _ assert_log_message_simple(int code, int event) impure inline {
     tuple dst_ext    = parsed_msg.at(1).parse_addr();
     throw_unless(code + 4, event == dst_ext.second().preload_uint(256));
 
-
+    return parsed_msg;
 }
 
 _ assert_thanks_resp(tuple thanks, int code, int query_id, slice oracle) impure inline {

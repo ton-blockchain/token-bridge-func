@@ -209,7 +209,7 @@ int __test_bridge_pay_swap_success() {
     slice src        = generate_internal_address();
     int gas_success  = send_pay_swap(query_id, msg_val, src, false);
 
-    assert_log_message_simple(300, log_swap_paid);
+    assert_log_message_simple(300, log_swap_paid, null());
 
     return gas_success;
 }
