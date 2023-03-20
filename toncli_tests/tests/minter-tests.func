@@ -4,12 +4,14 @@
 #include "utils/op-codes.func";
 #include "utils/helpers.func";
 
-(int, cell, cell) load_test_data() inline {
+(int, int, cell, cell) load_test_data() inline {
+	var (gas, stack) = invoke_method(get_jetton_data,[]);
   slice ds = get_data().begin_parse();
   return (
-      ds~load_coins(), ;; total_supply
-      ds~load_ref(), ;; content
-      ds~load_ref()  ;; jetton_wallet_code
+			gas,
+      stack.first(), ;; total_supply
+      stack.second(), ;; content
+      stack.third()  ;; jetton_wallet_code
   );
 }
 
@@ -85,7 +87,7 @@ int test_mint(int mint_amount, int exp_fail?) {
   slice admin_address = set_test_bridge_conf();
 
 	;;Non-standardized but widely used message
-	var ( total_supply, content, code ) = load_test_data();
+	var ( gas_success, total_supply, content, code ) = load_test_data();
 
 	int query_id     = rand(1337) + 1;
 	int forward_ton  = one_unit / 10;
@@ -115,14 +117,13 @@ int test_mint(int mint_amount, int exp_fail?) {
 	cell msg          = generate_internal_message_custom( 0, 0, 0,  mint_body, rand_addr, null(), 0 );
 
 	int gas_failed    = invoke_method_expect_fail( recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
-  int gas_success   = 0;
 	assert_no_actions();
 
 	;;Now changing source address to admin
 	msg               = generate_internal_message_custom( 0, 0, 0,  mint_body, admin_address, null(), 0 );
 
     if ( exp_fail? ) {
-        gas_success        = invoke_method_expect_fail(recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
+        gas_failed += invoke_method_expect_fail(recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
     }
     else {
 	    ( gas_success, _ ) = invoke_method( recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
@@ -149,7 +150,8 @@ int test_mint(int mint_amount, int exp_fail?) {
 
 	    ;; Also total supply should increase by mint_amount
 
-	    var( new_supply, _, _ ) = load_test_data();
+	    var ( lookup_after, new_supply, _, _ ) = load_test_data();
+			gas_success += lookup_after;
 	    throw_unless(604, total_supply + mint_amount == new_supply);
       throw_unless(605, msg_val - jetton_min_storage);
     }
@@ -187,10 +189,9 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 
 	-}
     slice admin_address = set_test_bridge_conf();
-	var ( total_supply, content, code ) = load_test_data();
+	var ( gas_used, total_supply, content, code ) = load_test_data();
 
 	int query_id    = rand( 1337 ) + 1;
-  int gas_used    = 0;
 	;; Making sure that source address would be valid jetton address
 
 	slice sender    = generate_internal_address_with_custom_data( 0, 0, random() );
@@ -199,7 +200,7 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 	cell msg        = generate_internal_message_custom( 0, 0, 0, msg_body, src, null(), 0);
 
     if ( exp_fail? ) {
-        gas_used     = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+        gas_used    += invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
     }
     else {
 	    (gas_used, _ ) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
@@ -216,7 +217,8 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 
 	    verify_burn_jetton( query_id, admin_address, one_unit, 0, 0, sent_msg );
 
-	    var( new_supply, _, _ ) = load_test_data();
+	    var( lookup_after, new_supply, _, _ ) = load_test_data();
+			gas_used += lookup_after;
 
 	    throw_unless( 603, total_supply - burn_amount == new_supply );
     }
@@ -246,12 +248,13 @@ int __test_burn_notification_success_max_val() {
 
 ;; Get methods tests start here
 
+{-
 int __test_get_jetton_data() {
 
 	int expect_mintable? = true; ;;Determines if test expects mintable contract
 
 
-    slice admin_address = set_test_bridge_conf();
+  slice admin_address = set_test_bridge_conf();
 
 	var ( total_supply, content, code ) = load_test_data();
 
@@ -272,6 +275,7 @@ int __test_get_jetton_data() {
 
 	return gas_used;
 }
+-}
 
 int __test_get_wallet_address() {
 
