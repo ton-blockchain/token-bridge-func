@@ -156,7 +156,7 @@ int test_mint(int mint_amount, int exp_fail?) {
       throw_unless(605, msg_val - jetton_min_storage);
 
       ;; Now let's test the log message tag
-      tuple parsed = assert_log_message_simple(610, log_mint, actions.second());
+      tuple parsed = assert_log_message_simple(610, log_mint_on_minter, actions.second());
 
       ;; And log contents
       slice body   = parsed.at(5);
@@ -210,13 +210,14 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 
     if ( exp_fail? ) {
       gas_used    += invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+			assert_no_actions();
     }
     else {
       var (gas_success, _ ) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
       gas_used += gas_success;
 
 	    tuple actions = parse_c5();
-	    throw_unless( 600, actions.tuple_length() == 1 );
+	    throw_unless( 600, actions.tuple_length() == 2 ); ;;Expect burn log message
 
 	    ( int action_type, cell sent_msg, int mode ) = actions.first().untriple();
 	    throw_unless( 601, action_type == 0 );
@@ -231,6 +232,13 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 			gas_used += lookup_after;
 
 	    throw_unless( 603, total_supply - burn_amount == new_supply );
+
+			;; Let's test the log message
+			tuple parsed = assert_log_message_simple(610, log_burn_on_minter, actions.second());
+
+			;; And log contents
+			slice body   = parsed.at(5);
+			throw_unless(620, new_supply == body~load_coins());
     }
 
 
