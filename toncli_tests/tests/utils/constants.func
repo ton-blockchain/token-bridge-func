@@ -20,6 +20,7 @@ const int mode_ignore_errors = 2;
 
 const int log_swap_paid      = 0xc0550ccf;
 const int log_burn           = 0xc0470ccf;
+const int log_mint           = 0xc0660ccf;
 
 const int op_suspend         = 4;
 const int op_suspend_mint    = 2;
