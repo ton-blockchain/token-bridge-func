@@ -82,14 +82,14 @@ _ validate_TIP_64( slice content_data ) impure inline {
 int test_mint(int mint_amount, int exp_fail?) {
 
 
-    slice admin_address = set_test_bridge_conf();
+  slice admin_address = set_test_bridge_conf();
 
 	;;Non-standardized but widely used message
 	var ( total_supply, content, code ) = load_test_data();
 
 	int query_id     = rand(1337) + 1;
 	int forward_ton  = one_unit / 10;
-    int msg_val      = one_unit;
+  int msg_val      = one_unit;
 	slice rand_addr  = generate_internal_address_with_custom_data(0, 0, random());
 	slice mint_dst   = generate_internal_address_with_custom_data(0, 0, random());
 	slice mint_from  = generate_empty_address();
@@ -115,7 +115,7 @@ int test_mint(int mint_amount, int exp_fail?) {
 	cell msg          = generate_internal_message_custom( 0, 0, 0,  mint_body, rand_addr, null(), 0 );
 
 	int gas_failed    = invoke_method_expect_fail( recv_internal, [ msg_val, msg_val, msg, mint_body.end_cell().begin_parse() ] );
-    int gas_success   = 0;
+  int gas_success   = 0;
 	assert_no_actions();
 
 	;;Now changing source address to admin
@@ -151,7 +151,7 @@ int test_mint(int mint_amount, int exp_fail?) {
 
 	    var( new_supply, _, _ ) = load_test_data();
 	    throw_unless(604, total_supply + mint_amount == new_supply);
-        throw_unless(605, msg_val - jetton_min_storage);
+      throw_unless(605, msg_val - jetton_min_storage);
     }
 
 	return gas_failed + gas_success;
@@ -190,16 +190,16 @@ int test_burn_notification(int burn_amount, int exp_fail?) {
 	var ( total_supply, content, code ) = load_test_data();
 
 	int query_id    = rand( 1337 ) + 1;
-    int gas_used    = 0;
+  int gas_used    = 0;
 	;; Making sure that source address would be valid jetton address
 
 	slice sender    = generate_internal_address_with_custom_data( 0, 0, random() );
-	slice src	    = calculate_user_jetton_wallet_address( sender, my_address(), code );
+	slice src	      = calculate_user_jetton_wallet_address( sender, my_address(), code );
 	var msg_body    = generate_jetton_burn_notification( query_id, burn_amount, sender, admin_address );
 	cell msg        = generate_internal_message_custom( 0, 0, 0, msg_body, src, null(), 0);
 
     if ( exp_fail? ) {
-        gas_used       = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+        gas_used     = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
     }
     else {
 	    (gas_used, _ ) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse() ] );
