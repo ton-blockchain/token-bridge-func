@@ -275,7 +275,7 @@ int __test_internal_transfer_not_wallet() {
 		return gas_lookup + gas_fail + gas_success;
 }
 
-int __test_internal_transfer_now_master() {
+int __test_internal_transfer_not_minter() {
     set_test_bridge_conf();
     var (gas_lookup, stack) = invoke_method(get_wallet_data, []);
 
