@@ -10,39 +10,39 @@ int __test_bridge_burn_notification_not_minter() {
 
     slice admin_address = set_test_bridge_conf();
 
-	int query_id = rand( 12345 ) + 1;
-	int burn_amount = one_unit;
+    int query_id = rand( 12345 ) + 1;
+    int burn_amount = one_unit;
     ;; Looking up
     var (int gas_init, stack) = invoke_method(get_bridge_data, []);
 
     cell minter_code = stack.third();
     cell wallet_code = stack.fourth();
 
-	;; Making sure that source address would be valid jetton address
+    ;; Making sure that source address would be valid jetton address
     cell content   = test_minter_content();
 
-	slice sender   = generate_internal_address_with_custom_data(0, 0, random());
+    slice sender   = generate_internal_address_with_custom_data(0, 0, random());
     (slice src, _) = test_calculate_minter_address(content, wallet_code, minter_code);
     slice  bad_src = src.generate_different_addr();
 
-     {-
+    {-
       This is what usually comming to the jetton-minter and then forwarded to bridge.
       When doing so, minter content is attached as a ref cell
     -}
 
 
     slice eth_dst = generate_eth_addr();
-	var msg_body  = generate_bridge_burn_notification( query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
+    var msg_body  = generate_bridge_burn_notification( query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
     var body_sc   = msg_body.end_cell().begin_parse();
 
-	cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, bad_src, null(), 0);
+    cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, bad_src, null(), 0);
 
     ;; Non-minter address should fail
-	(int gas_fail ) = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, body_sc]);
+    (int gas_fail ) = invoke_method_expect_fail(recv_internal, [one_unit, one_unit, msg, body_sc]);
 
     ;; New message with correct src should succeed
     msg                   = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
-	(int gas_success, _ ) = invoke_method(recv_internal, [one_unit, one_unit, msg, body_sc]);
+    (int gas_success, _ ) = invoke_method(recv_internal, [one_unit, one_unit, msg, body_sc]);
 
     return gas_init + gas_fail + gas_success;
 
@@ -52,7 +52,7 @@ int test_bridge_burn_notification_success(int burn_amount) {
 
     slice admin_address = set_test_bridge_conf();
 
-	int query_id    = rand( 12345 ) + 1;
+    int query_id    = rand( 12345 ) + 1;
     ;; Looking up
     var (int gas_init, stack) = invoke_method(get_bridge_data, []);
 
@@ -63,7 +63,7 @@ int test_bridge_burn_notification_success(int burn_amount) {
     cell content      = test_minter_content();
 
     int   sender_hash = random();
-	slice sender      = generate_internal_address_with_custom_data(0, 0, sender_hash);
+    slice sender      = generate_internal_address_with_custom_data(0, 0, sender_hash);
     (slice src, _)    = test_calculate_minter_address(content, wallet_code, minter_code);
 
      {-
@@ -73,11 +73,11 @@ int test_bridge_burn_notification_success(int burn_amount) {
 
 
     slice eth_dst = generate_eth_addr();
-	var msg_body  = generate_bridge_burn_notification(query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
+    var msg_body  = generate_bridge_burn_notification(query_id, burn_amount, sender, my_address(), eth_dst).store_ref(content);
 
-	cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
+    cell msg      = generate_internal_message_custom(0, 0, 0, msg_body, src, null(), 0);
 
-	(int gas_used, _) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
+    (int gas_used, _) = invoke_method( recv_internal, [one_unit, one_unit, msg, msg_body.end_cell().begin_parse()]);
 
     tuple actions = parse_c5();
 
@@ -209,7 +209,7 @@ int __test_bridge_pay_swap_success() {
     slice src        = generate_internal_address();
     int gas_success  = send_pay_swap(query_id, msg_val, src, false);
 
-    assert_log_message_simple(300, log_swap_paid);
+    assert_log_message_simple(300, log_swap_paid, null());
 
     return gas_success;
 }

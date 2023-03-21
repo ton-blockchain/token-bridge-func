@@ -6,5 +6,4 @@
   collector Addr,
   "build/jetton_minter.fif" include over tuple? { nip } if ref,
   "build/jetton_wallet.fif" include over tuple? { nip } if ref,
-  0 1 u, // Empty queries dict
 b>
