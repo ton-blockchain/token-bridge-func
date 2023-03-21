@@ -13,7 +13,6 @@
    0 "votes-collector.fif" include hashu Addr, // collector_address
    jetton_minter_code ref,
    jetton_wallet_code ref,
-   dictnew dict,
 b> constant storage
 
 code storage null <b b{0011} s, 3 roll ref, rot ref, swap dict, b> constant StateInit

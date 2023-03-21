@@ -1,0 +1,68 @@
+#!/usr/bin/fift -s
+"TonUtil.fif" include
+"GetOpt.fif" include
+
+{ show-options-help 1 halt } : usage
+
+"config79" =: savefile
+
+begin-options
+    "<bridge-addr> <oracles-addr> <state-flags> <burn-bridge-fee> <bridge-mint-fee> <wallet-min-tons-for-storage> <wallet-gas-consumption> <minter-min-tons-for-storage> <discover-gas-consumption> <external-chain-address> <oracle1-addr> <oracle1-secp-pubkey> ... [-o<savefile>]" +cr +tab
+      +"ADD HELP HERE "
+      +"and saves it into <savefile>.boc (" savefile $+ +".boc by default)"
+    disable-digit-options generic-help-setopt
+    "o" "--output" { =: savefile } short-long-option-arg
+      "Save result into specified file" option-help
+    "h" "--help" { usage } short-long-option
+      "Shows a help message" option-help
+parse-options
+
+$# 10 < ' usage if
+$# 2 mod ' usage if
+$# 10 - 2 / constant N
+$1 parse-smc-addr drop
+swap 1+ abort"Bridge address should be defined on masterchain"
+constant bridge-addr
+$2 parse-smc-addr drop 
+swap 1+ abort"Oracles address should be defined on masterchain"
+constant oracles-addr
+$3 parse-int =: state-flags
+$4 $>GR =: burn-bridge-fee
+$5 $>GR =: bridge-mint-fee
+$6 $>GR =: wallet-min-tons-for-storage
+$7 $>GR =: wallet-gas-consumption
+$8 $>GR =: minter-min-tons-for-storage
+$9 $>GR =: discover-gas-consumption
+$10 parse-int =: external-chain-address
+dictnew 11
+{ dup $() parse-smc-addr drop swap 1+ abort"Oracle address should be defined on masterchain"
+  swap 1+ dup $() parse-int <b swap 256 u, b> <s swap 1+
+  3 -roll swap rot 256 udict! drop swap
+} N times drop constant oracles
+
+<b
+   burn-bridge-fee Gram,
+   bridge-mint-fee Gram,
+   wallet-min-tons-for-storage Gram,
+   wallet-gas-consumption Gram,
+   minter-min-tons-for-storage Gram,
+   discover-gas-consumption Gram,
+b> =: JettonBridgePrices
+
+<b 0x01 8 u,
+   bridge-addr 256 u, 
+   oracles-addr 256 u,
+   oracles dict,
+   state-flags 8 u,
+   JettonBridgePrices ref,
+   external-chain-address 256 u,
+b> constant config79
+
+."Config79 built: " cr
+."hash: " cr
+config79 hash 256 u>B Bx. cr
+config79 <s csr. cr
+config79 2 boc+>B 
+savefile +".boc" 
+tuck B>file
+."(Saved to file " type .")" cr

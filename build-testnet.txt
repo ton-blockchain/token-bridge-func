@@ -1,34 +1,69 @@
 cd src/func/jetton-bridge/
 
+Update chain_id in build-collector.fif to 97 (BSC testnet) or 5 (Goerli).
+
+Update MY_CHAIN_ID in params.fc to 97 (BSC testnet) or 5 (Goerli).
+
+Update CONFIG_PARAM_ID in params.fc to 79 (ETH) or 80 (BSC).
+
+Update parameter after -1 in new-multisig.fif command line to 97 or 5.
+
+Check that `func -V` is '0.4.2'
+
 __________________________________________________________________________
 eth_testnet tag
 __________________________________________________________________________
-Multisig compiled by `func-0.3.0`
+Multisig compiled by `func-0.4.2`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 3 123 testnet-eth-new 2 uf_public_keys_testnet
+fift -s new-multisig.fif -1 97 123 testnet-eth-new 2 uf_public_keys_testnet
 
 __________________________________________________________________________
-Collector compiled by `func-0.3.0`
+Collector compiled by `func-0.4.2`
 
 func -o votes-collector.fif -SPA votes-collector.fc
 
 fift -s new-collector.fif
 
 __________________________________________________________________________
-Jetton-wallet compiled by `func-0.3.0`
+Jetton-wallet compiled by `func-0.4.2`
 
 func -o jetton-wallet.fif -SPA jetton-wallet.fc
 
 __________________________________________________________________________
-Jetton-minter compiled by `func-0.3.0`
+Jetton-minter compiled by `func-0.4.2`
 
 func -o jetton-minter.fif -SPA jetton-minter.fc
 
 __________________________________________________________________________
-Bridge compiled by `func-0.3.0`
+Bridge compiled by `func-0.4.2`
 
 func -o bridge_code2.fif -SPA jetton-bridge.fc
 
 fift -s new-bridge.fif
+
+Send TONS to multisig, collector, bridge addresses
+
+sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/bridge-create.boc
+sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/votes-collector-create.boc
+sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/testnet-eth-new-create.boc
+
+config 80 for BSC
+
+fift -s build-config79.fif \
+Ef_JGagqBgX4AkGl8jItBoEdizujGgr9Hk5-vVApTy2OtmC_ \ \\ bridge address
+kf-xtS9YIpDd8AOomdzDxXHtsH7y3GfrheIdfrJhhFicgYQa \ \\ multisig address
+0 \ \\ state_flags
+1 \ \\ burn-bridge-fee
+1 \ \\ bridge-mint-fee
+0.01 \ \\ wallet-min-tons-for-storage
+0.015 \ \\ wallet-gas-consumption
+0.1 \ \\ minter-min-tons-for-storage
+0.01 \ \\ discover-gas-consumption
+0x677908e3F6A168f3E867471B8896e710dB5e3C7B \ \\ external-chain-address
+Ef9fwskZLEuGDfYTRAtvt9k-mEdkaIskkUOsEwPw1wzXk7zR 0xe54cd631c97be0767172ad16904688962d09d2fe \
+Ef8jPzrhTYloKgTCsGgEFNx7OdH-sJ98etJnwrIVSsFxH9mu 0xeb05E1B6AC0d574eF2CF29FDf01cC0bA3D8F9Bf1 \
+Ef-fxGCPuPKNR6T4GcFxNQuLU5TykLKEAtkxWEfA1wBWy6JE 0xF636f40Ebe17Fb2A1343e5EEee9D13AA90888b51
+
+config 79 for ETH
