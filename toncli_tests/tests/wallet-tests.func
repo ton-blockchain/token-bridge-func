@@ -230,36 +230,70 @@ int transfer_test_msg_value( int msg_value, int forward_fee, int forward_amount,
 
 -}
 
-int test_internal_transfer(int transfer_amount, int exp_fail?) {
+int test_internal_transfer(int transfer_amount, slice from, int exp_fail?) {
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
-	slice from          = get_master();
+  if(from.null?()) {
+	  from = get_master();
+  }
+
 	int balance         = get_test_balance();
 	int forward_ton     = one_unit / 10;
 	int msg_value       = one_unit;
-    int gas_used        = 0;
+  int gas_used        = 0;
 
 
-	var  msg_body       = generate_jetton_internal_transfer_request( query_id, transfer_amount, from, dst, forward_ton, null(), false );
+	var  msg_body       = generate_jetton_internal_transfer_request( query_id, transfer_amount, my_address(), dst, forward_ton, null(), false );
 	cell msg            = generate_internal_message_custom( 0, 0, 0,  msg_body, from, null(), 0 );
 
-    ifnot( exp_fail? ) {
+  ifnot( exp_fail? ) {
 	    ( gas_used, _ ) = invoke_method(recv_internal, [msg_value, msg_value, msg, msg_body.end_cell().begin_parse()]);
 	    throw_unless( 500, balance + transfer_amount == get_test_balance() );
     }
     else {
-        gas_used        = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, msg_body.end_cell().begin_parse()]);
+      gas_used        = invoke_method_expect_fail(recv_internal, [msg_value, msg_value, msg, msg_body.end_cell().begin_parse()]);
+			throw_unless(510, balance == get_test_balance());
     }
 
 
 	return gas_used;
 }
 
-int __test_internal_transfer() {
+int __test_internal_transfer_not_wallet() {
+    set_test_bridge_conf();
+		var (gas_lookup, stack)  = invoke_method(get_wallet_data, []);
+
+    slice jetton_addr =  test_calculate_user_jetton_wallet_address(my_address(), stack.at(2), stack.at(3));
+
+		slice non_wallet  = jetton_addr.generate_different_addr();
+    int transfer_val  = (rand(100) + 1) * one_unit;
+
+		int gas_fail      = test_internal_transfer(transfer_val, non_wallet, true);
+    int gas_success   = test_internal_transfer(transfer_val, jetton_addr, false);
+
+		return gas_lookup + gas_fail + gas_success;
+}
+
+int __test_internal_transfer_now_master() {
+    set_test_bridge_conf();
+    var (gas_lookup, stack) = invoke_method(get_wallet_data, []);
+
+    slice minter     = stack.at(2);
+    slice not_minter = minter.generate_different_addr();
+
+    int transfer_val  = (rand(100) + 1) * one_unit;
+
+    int gas_fail      = test_internal_transfer(transfer_val, not_minter, true);
+    int gas_success   = test_internal_transfer(transfer_val, minter, false);
+
+    return gas_lookup + gas_fail + gas_success;
+}
+
+int __test_internal_transfer_success() {
 
     set_test_bridge_conf();
-    return test_internal_transfer((rand(100) + 1) * one_unit, false);
+    return test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 }
 
 int __test_internal_transfer_overflow() {
@@ -269,9 +303,9 @@ int __test_internal_transfer_overflow() {
     int transfer_val = (rand(100) + 1) * one_unit;
     int max_val      = (1 << 120) - 1;
 
-    int gas_used = test_internal_transfer(transfer_val, false);
+    int gas_used = test_internal_transfer(transfer_val, null(), false);
     ;; Expect balance value to overflow
-    gas_used    += test_internal_transfer(max_val - transfer_val + 1, true);
+    gas_used    += test_internal_transfer(max_val - transfer_val + 1, null(), true);
 
     return gas_used;
 }
@@ -279,9 +313,9 @@ int __test_internal_transfer_overflow() {
 
 int __test_transfer_not_owner() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
@@ -305,9 +339,9 @@ int __test_transfer_not_owner() {
 
 int __test_transfer_no_jettons() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
@@ -343,7 +377,7 @@ int __test_transfer_storage_fee() {
 	int excesses	   = 1;
 	int msg_expected   = forward_amount > 0 ? 2 : 1;
 	int msg_value      = transfer_fee + muldiv(forward_fee, 3, 2) * msg_expected + forward_amount + excesses; ;;Account for everythin except storage fee
-    int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;;Expect fail
 	gas_used 	  += transfer_test_msg_value( msg_value, forward_fee, forward_amount, true );
@@ -365,7 +399,7 @@ int __test_transfer_jetton_gas_fee() {
 	int excesses	   = 1;
 	int msg_expected   = forward_amount > 0 ? 2 : 1;
 	int msg_value      = muldiv(forward_fee, 3, 2) * msg_expected + forward_amount + excesses; ;;Account for everythin except transfer gas fee
-    int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;;Expect fail
 	gas_used 	  += transfer_test_msg_value( msg_value, forward_fee, forward_amount, true );
@@ -386,7 +420,7 @@ int __test_transfer_forward_fee_once() {
 	int excesses	   = 1;
 	int msg_expected   = forward_amount > 0 ? 2 : 1;
 	int msg_value      = transfer_fee + forward_amount + excesses; ;;Account for everythin except forward_fee;
-    int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;;Expect fail
 	gas_used 	  += transfer_test_msg_value( msg_value, forward_fee, forward_amount, true );
@@ -407,7 +441,7 @@ int __test_transfer_forward_fee_twice() {
 	int excesses	   = 1;
 	int msg_expected   = forward_amount > 0 ? 2 : 1;
 	int msg_value      = transfer_fee + muldiv(forward_fee, 3, 2)  + forward_amount + excesses; ;;Account for everythin except that two forward fees instead of one
-    int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;;Expect fail
 	gas_used 	  += transfer_test_msg_value( msg_value, forward_fee, forward_amount, true );
@@ -428,7 +462,7 @@ int __test_transfer_forward_amount() {
 	int excesses	   = 1;
 	int msg_expected   = forward_amount > 0 ? 2 : 1;
 	int msg_value      = transfer_fee + muldiv(forward_fee, 3, 2) * msg_expected + excesses; ;;Account for everythin except forward_amount
-    int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;;Expect fail
 	gas_used 	  += transfer_test_msg_value( msg_value, forward_fee, forward_amount, true );
@@ -450,7 +484,7 @@ int __test_transfer_excess() {
 	int msg_expected   = forward_amount > 0 ? 2 : 1;
 	int msg_value      = transfer_fee + muldiv(forward_fee, 3, 2) * msg_expected + forward_amount; ;;Account for everythin except excess ( nothing to return )
 
-    int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used       = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;;Expect fail
 	gas_used 	  += transfer_test_msg_value( msg_value, forward_fee, forward_amount, true );
@@ -553,9 +587,9 @@ int verify_successfull_transfer( int transfer_amount, int forward_amount, cell f
 
 int __test_transfer_success_no_fwd() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_used = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 	gas_used    += verify_successfull_transfer( one_unit, 0, null() ); ;;Test without forward amount first
 
 	return gas_used;
@@ -563,12 +597,12 @@ int __test_transfer_success_no_fwd() {
 
 int __test_transfer_success_with_fwd() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
 	cell payload = begin_cell().store_slice("Hop hey").end_cell();
 	;; 0.25 forward amount and some payload
 
-    int gas_used = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 	gas_used    += verify_successfull_transfer( one_unit, one_unit / 4, payload ); ;;Test with forward amount
 
 	return gas_used;
@@ -580,7 +614,7 @@ int __test_transfer_max_val() {
 
     int max_val  = (1 << 120) - 1;
 
-    int gas_used = test_internal_transfer(max_val, false);
+    int gas_used = test_internal_transfer(max_val, null(), false);
     gas_used    += verify_successfull_transfer(max_val, 0, null());
 
     return gas_used;
@@ -622,9 +656,9 @@ int burn_test_msg_value( int msg_value, int forward_fee, int expect_fail? ) impu
 
 int __test_burn_not_owner() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
@@ -650,14 +684,14 @@ int __test_burn_not_owner() {
 
 int __test_burn_too_many() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	;; Testing case where user burns more jettons than available on balance
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
-    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
+  cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
 	int balance     = get_test_balance();
 	var  msg_body   = generate_jetton_burn_request( query_id, balance + 1, resp_dst, bridge_payload ); ;;Burn balance + 1 jettons
@@ -678,15 +712,14 @@ int __test_burn_too_many() {
 
 int __test_burn_no_gas() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_used    = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_used    = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	int forward_fee = one_unit / 10;
 	int excess 	    = 1;
 	int msg_value   = rand(test_bridge_burn_fee); ;; Lower than burn gas fee
 
-    set_test_bridge_conf();
 	gas_used       += burn_test_msg_value(msg_value, forward_fee, true);
 	assert_no_actions();
 	;; verifying error trigger
@@ -698,16 +731,16 @@ int __test_burn_no_gas() {
 
 int __test_burn_zero() {
 
-    set_test_bridge_conf();
+  set_test_bridge_conf();
 
-    int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
 
-    cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
+  cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
 
 	int balance    = get_test_balance();
-    int msg_value  = test_bridge_burn_fee;
+  int msg_value  = test_bridge_burn_fee;
 	var  msg_body  = generate_jetton_burn_request(query_id, 0, resp_dst, bridge_payload); ;;Burn 0 jettons
 	cell msg       = generate_internal_message_custom(0, 0, 0, msg_body, owner, null(), 0);
 
@@ -726,9 +759,9 @@ int __test_burn_zero() {
 
 int __test_burn_state() {
 
-    set_bridge_conf_custom(1); ;; Setting bridge configuration state to 1;
+  set_bridge_conf_custom(1); ;; Setting bridge configuration state to 1;
 
-    int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, false);
+  int gas_init = test_internal_transfer((rand(100) + 1) * one_unit, null(), false);
 
 	var ( owner, dst, resp_dst, query_id ) = setup_req_fields();
     cell  bridge_payload = begin_cell().store_uint(generate_eth_hash(), 160).end_cell();
@@ -837,7 +870,7 @@ int __test_burn_successfull() {
 
     int mint_amount = (rand(100) + 1) * one_unit;
 
-    int gas_init    = test_internal_transfer(mint_amount, false);
+    int gas_init    = test_internal_transfer(mint_amount, null(), false);
     int gas_success = test_burn_successfull(rand(mint_amount) + 1, false);
 
     return gas_init + gas_success;
@@ -850,7 +883,7 @@ int __test_burn_max_val() {
 
     int mint_amount = (1 << 120) - 1;
 
-    int gas_init    = test_internal_transfer(mint_amount, false);
+    int gas_init    = test_internal_transfer(mint_amount, null(), false);
     int gas_success = test_burn_successfull(mint_amount, false);
 
     return gas_init + gas_success;
