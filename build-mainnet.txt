@@ -1,14 +1,12 @@
 cd src/func/jetton-bridge/
 
-Update chain_id in build-collector.fif to 97 (BSC testnet) or 5 (Goerli).
+Update chain_id in build-collector.fif to 56 (BSC) or 1 (Ethereum).
 
-Update MY_CHAIN_ID in params.fc to 97 (BSC testnet) or 5 (Goerli).
+Update MY_CHAIN_ID in params.fc to 56 (BSC) or 1 (Ethereum).
 
 Update CONFIG_PARAM_ID in params.fc to 79 (ETH) or 80 (BSC).
 
-Update parameter wallet-id in new-multisig.fif command line to 97 or 5.
-
-Update `lock_until` (123) in new-multisig.fif if needed
+Update parameter `lock_until` (unixtime seconds); and `wallet-id` in new-multisig.fif command line to 156 (BSC) or 101 (Ethereum).
 
 Check that `func -V` is '0.4.2'
 
@@ -19,7 +17,7 @@ Multisig compiled by `func-0.4.2`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 97 123 testnet-eth-new 2 uf_public_keys_testnet
+fift -s new-multisig.fif -1 101 123 testnet-eth-new 2 uf_public_keys
 
 __________________________________________________________________________
 Collector compiled by `func-0.4.2`
@@ -52,20 +50,5 @@ sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/vo
 sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/testnet-eth-new-create.boc
 
 config 80 for BSC
-
-fift -s build-config79.fif \
-Ef_JGagqBgX4AkGl8jItBoEdizujGgr9Hk5-vVApTy2OtmC_ \ \\ bridge address
-kf-xtS9YIpDd8AOomdzDxXHtsH7y3GfrheIdfrJhhFicgYQa \ \\ multisig address
-0 \ \\ state_flags
-1 \ \\ burn-bridge-fee
-1 \ \\ bridge-mint-fee
-0.01 \ \\ wallet-min-tons-for-storage
-0.015 \ \\ wallet-gas-consumption
-0.1 \ \\ minter-min-tons-for-storage
-0.01 \ \\ discover-gas-consumption
-0x677908e3F6A168f3E867471B8896e710dB5e3C7B \ \\ external-chain-address
-Ef9fwskZLEuGDfYTRAtvt9k-mEdkaIskkUOsEwPw1wzXk7zR 0xe54cd631c97be0767172ad16904688962d09d2fe \
-Ef8jPzrhTYloKgTCsGgEFNx7OdH-sJ98etJnwrIVSsFxH9mu 0xeb05E1B6AC0d574eF2CF29FDf01cC0bA3D8F9Bf1 \
-Ef-fxGCPuPKNR6T4GcFxNQuLU5TykLKEAtkxWEfA1wBWy6JE 0xF636f40Ebe17Fb2A1343e5EEee9D13AA90888b51
 
 config 79 for ETH
