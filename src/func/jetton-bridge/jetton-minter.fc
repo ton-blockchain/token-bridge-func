@@ -100,11 +100,10 @@ slice zero_address() inline {
         int new_total_supply = total_supply + jetton_amount;
         save_data(new_total_supply, content, jetton_wallet_code);
 
-        emit_log_simple(LOG_MINT_ON_MINTER,
-            begin_cell()
-                .store_coins(new_total_supply)
-                .end_cell(),
-            null()
+        emit_log_simple(
+                LOG_MINT_ON_MINTER,
+                begin_cell().store_coins(new_total_supply).end_cell(),
+                0
         );
 
         return ();
@@ -136,11 +135,10 @@ slice zero_address() inline {
 
         send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);
 
-        emit_log_simple(LOG_BURN_ON_MINTER,
-                begin_cell()
-                        .store_coins(new_total_supply)
-                        .end_cell(),
-                null()
+        emit_log_simple(
+                LOG_BURN_ON_MINTER,
+                begin_cell().store_coins(new_total_supply).end_cell(),
+                0
         );
 
         return ();

@@ -99,19 +99,21 @@ slice encode_number_to_text(int decimals, int radix) {
     return str.end_cell().begin_parse();
 }
 
-() emit_log_simple (int event_id, cell data, int query_id) impure inline {
+() emit_log_simple (int event_id, cell data, int need_separate_cell) impure inline {
+    ;; 1023 - (4+2+9+256+64+32+2) = 654 bit free
+
     var msg = begin_cell()
             .store_uint (12, 4)         ;; ext_out_msg_info$11 src:MsgAddressInt ()
             .store_uint (1, 2)          ;; addr_extern$01
             .store_uint (256, 9)        ;; len:(## 9)
             .store_uint(event_id, 256); ;; external_address:(bits len)
 
-    if(null?(data)) {
-        msg = msg.store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
-                .store_query_id(query_id);
-    } else {
+    if (need_separate_cell) {
         msg = msg.store_uint(1, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
                 .store_ref(data);
+    } else {
+        msg = msg.store_uint(0, 64 + 32 + 2) ;; created_lt, created_at, init:Maybe, body:Either
+                .store_slice(data.begin_parse());
     }
 
     send_raw_message(msg.end_cell(), SEND_MODE_REGULAR);

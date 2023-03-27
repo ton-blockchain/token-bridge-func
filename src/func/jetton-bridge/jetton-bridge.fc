@@ -177,7 +177,8 @@
 
         throw_if(error::oracles_sender, is_oracles);
         throw_unless(error::mint_fee_not_matched, msg_value == bridge_mint_fee);
-        emit_log_simple (LOG_SWAP_PAID, null(), query_id);
+        int swap_id = in_msg_body~load_uint(256);
+        emit_log_simple(LOG_SWAP_PAID, begin_cell().store_uint(swap_id, 256).end_cell(), 0);
     } elseif (op == op::burn_notification) {
         int jetton_amount = in_msg_body~load_coins();
         slice from_address = in_msg_body~load_msg_addr();
@@ -204,7 +205,7 @@
                     .store_uint(token_address, 160)
                     .store_uint(from_address_hash, 256)
                     .end_cell(),
-            null()
+            1
         );
     }
 }
