@@ -19,7 +19,7 @@ Multisig compiled by `func-0.4.2`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 97 124 testnet-eth-new 2 uf_public_keys_testnet
+fift -s new-multisig.fif -1 5 124 testnet-eth-new 2 uf_public_keys_testnet
 
 __________________________________________________________________________
 Collector compiled by `func-0.4.2`
@@ -73,3 +73,22 @@ Ef8jPzrhTYloKgTCsGgEFNx7OdH-sJ98etJnwrIVSsFxH9mu 0xeb05E1B6AC0d574eF2CF29FDf01cC
 Ef-fxGCPuPKNR6T4GcFxNQuLU5TykLKEAtkxWEfA1wBWy6JE 0xF636f40Ebe17Fb2A1343e5EEee9D13AA90888b51
 
 config 79 for ETH
+
+Multisig - kf9NLH8CsGUkEKGYzCxaLd9Th6T5YkO-MXsCEU9Rw1fiRhf9
+Collector - EQC1ZeKX1LNrlQ4bwi3je3KVM1AoZ3rkeyHM5hv9pYzmIh4v
+Bridge - Ef-lJBALjXSSwSKiedKzriSHixwQUxJ1BxTE05Ur5AXwZVjp
+
+fift -s build-config79.fif \
+Ef-QhQLNRndggmLKXzFzA-F51rnjZ5yWY3ww2JjcHjEDohCg \ \\ bridge address
+kf9NLH8CsGUkEKGYzCxaLd9Th6T5YkO-MXsCEU9Rw1fiRhf9 \ \\ multisig address
+0 \ \\ state_flags
+1 \ \\ burn-bridge-fee
+1 \ \\ bridge-mint-fee
+0.01 \ \\ wallet-min-tons-for-storage
+0.015 \ \\ wallet-gas-consumption
+0.1 \ \\ minter-min-tons-for-storage
+0.01 \ \\ discover-gas-consumption
+0x4Efd8f04B6fb4CFAF0cfaAC11Fb489b97DBebB60 \ \\ external-chain-address
+Ef9fwskZLEuGDfYTRAtvt9k-mEdkaIskkUOsEwPw1wzXk7zR 0xe54cd631c97be0767172ad16904688962d09d2fe \
+Ef8jPzrhTYloKgTCsGgEFNx7OdH-sJ98etJnwrIVSsFxH9mu 0xeb05E1B6AC0d574eF2CF29FDf01cC0bA3D8F9Bf1 \
+Ef-fxGCPuPKNR6T4GcFxNQuLU5TykLKEAtkxWEfA1wBWy6JE 0xF636f40Ebe17Fb2A1343e5EEee9D13AA90888b51
