@@ -5,6 +5,6 @@
    "votes-collector.fif" include PUSHREF SETCODE
 }>c
 <b dictnew dict,
-    5 8 u, // chain_id, so that the address is not the same for different networks
+    1 8 u, // chain_id, so that the address is not the same for different networks
 b>
 null <b b{0011} s, 3 roll ref, rot ref, swap dict, b> // StateInit
