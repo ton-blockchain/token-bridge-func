@@ -19,7 +19,7 @@ Multisig compiled by `func-0.4.2`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 97 123 testnet-eth-new 2 uf_public_keys_testnet
+fift -s new-multisig.fif -1 97 124 testnet-eth-new 2 uf_public_keys_testnet
 
 __________________________________________________________________________
 Collector compiled by `func-0.4.2`
@@ -53,9 +53,13 @@ sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/te
 
 config 80 for BSC
 
+Multisig - kf8n7jRSwkvkKoqlt8YGyQ93IivUp52j6oIlleVsuKS2NYnr
+Collector - EQDTtD0leOd2aRtfX8sVwhdIpgoO1kvYj2iiBpbOMBgmi_I7
+Bridge - Ef-QhQLNRndggmLKXzFzA-F51rnjZ5yWY3ww2JjcHjEDohCg
+
 fift -s build-config79.fif \
-Ef_JGagqBgX4AkGl8jItBoEdizujGgr9Hk5-vVApTy2OtmC_ \ \\ bridge address
-kf-xtS9YIpDd8AOomdzDxXHtsH7y3GfrheIdfrJhhFicgYQa \ \\ multisig address
+Ef-QhQLNRndggmLKXzFzA-F51rnjZ5yWY3ww2JjcHjEDohCg \ \\ bridge address
+kf8n7jRSwkvkKoqlt8YGyQ93IivUp52j6oIlleVsuKS2NYnr \ \\ multisig address
 0 \ \\ state_flags
 1 \ \\ burn-bridge-fee
 1 \ \\ bridge-mint-fee

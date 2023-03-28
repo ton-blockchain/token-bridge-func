@@ -1,4 +1,4 @@
-const int CONFIG_PARAM_ID = 79;
+const int CONFIG_PARAM_ID = 80;
 const int MY_CHAIN_ID = 97;
 const int LOG_BURN = 0xc0470ccf;
 const int LOG_SWAP_PAID = 0xc0550ccf;
