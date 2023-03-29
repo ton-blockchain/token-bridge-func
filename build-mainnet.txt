@@ -17,7 +17,7 @@ Multisig compiled by `func-0.4.2`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 101 1680042285 testnet-eth-new 6 uf_public_keys_mainnet
+fift -s new-multisig.fif -1 101 1680339600 testnet-eth-new 6 uf_public_keys_mainnet
 
 __________________________________________________________________________
 Collector compiled by `func-0.4.2`
@@ -51,6 +51,6 @@ sendfile /Users/tolya/dev/ton/bridge/token-bridge-func/src/func/jetton-bridge/te
 
 config 79 for ETH
 
-Multisig -
+Multisig - kf8hHxV0v2I9FHh3CMX91WXjKaJav6SQlemEQm8ZvPBJdAzU
 Collector - EQDF6fj6ydJJX_ArwxINjP-0H8zx982W4XgbkKzGvceUWvXl
 Bridge - Ef-1JetbPF9ubc1ga-57oHoOyDA1IShJt-BVlJnA9rrVTfrB
