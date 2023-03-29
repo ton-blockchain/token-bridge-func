@@ -17,7 +17,7 @@ Multisig compiled by `func-0.4.2`
 
 func -o multisig-code.fif -SPA multisig.fc
 
-fift -s new-multisig.fif -1 101 1680042285 testnet-eth-new 2 uf_public_keys_mainnet
+fift -s new-multisig.fif -1 101 1680042285 testnet-eth-new 6 uf_public_keys_mainnet
 
 __________________________________________________________________________
 Collector compiled by `func-0.4.2`
