@@ -79,7 +79,7 @@ Collector - EQC1ZeKX1LNrlQ4bwi3je3KVM1AoZ3rkeyHM5hv9pYzmIh4v
 Bridge - Ef-lJBALjXSSwSKiedKzriSHixwQUxJ1BxTE05Ur5AXwZVjp
 
 fift -s build-config79.fif \
-Ef-QhQLNRndggmLKXzFzA-F51rnjZ5yWY3ww2JjcHjEDohCg \ \\ bridge address
+Ef-lJBALjXSSwSKiedKzriSHixwQUxJ1BxTE05Ur5AXwZVjp \ \\ bridge address
 kf9NLH8CsGUkEKGYzCxaLd9Th6T5YkO-MXsCEU9Rw1fiRhf9 \ \\ multisig address
 0 \ \\ state_flags
 1 \ \\ burn-bridge-fee
