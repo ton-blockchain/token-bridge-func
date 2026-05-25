@@ -1,25 +1,6 @@
 #include "stdlib.fc";
 #include "params.fc";
 
-(int, int) get_bridge_config() inline_ref {
-  cell bridge_config = config_param(CONFIG_PARAM_ID);
-  if (bridge_config.cell_null?()) {
-    bridge_config = config_param(- CONFIG_PARAM_ID);
-  }
-  if (bridge_config.cell_null?()) {
-    return (0, 0);
-  }
-  slice ds = bridge_config.begin_parse();
-  if (ds.slice_bits() < 512 + 8) {
-    return (0, 0);
-  }
-  int prefix = ds~load_uint(8);
-  ;; wc always equals to -1
-  int bridge_address = ds~load_uint(256);
-  int oracles_address = ds~load_uint(256);
-  return (bridge_address, oracles_address);
-}
-
 _ unpack_state() inline_ref {
   var ds = begin_parse(get_data());
   var res = (ds~load_uint(32), ds~load_uint(8), ds~load_uint(8), ds~load_uint(64), ds~load_dict(), ds~load_dict(), ds~load_uint(32));
@@ -122,13 +103,9 @@ _ unpack_owner_info(slice cs) inline_ref {
 
 (cell, cell) update_pending_queries(cell pending_queries, cell owner_infos, slice msg, int query_id, int creator_i, int cnt, int cnt_bits, int n, int k) impure inline_ref {
   if (cnt >= k) {
-    (int bridge_address, int oracles_address) = get_bridge_config();
     (_, int my_addr) = parse_std_addr(my_address());
     var (mode, msg', wc, addr, flags) = parse_msg(msg);
-    int is_bounceable = (flags & 2) == 2;
-    if ( ((wc == -1) & (addr == bridge_address) & is_bounceable) | (oracles_address != my_addr) ) {
-      send_raw_message(msg', mode);
-    }
+    send_raw_message(msg', mode);
     pending_queries~udict_set_builder(64, query_id, begin_cell().store_int(0, 1));
     owner_infos~dec_flood(creator_i);
   } else {
@@ -173,7 +150,6 @@ _ unpack_owner_info(slice cs) inline_ref {
 
   (int wallet_id, int n, int k, int last_cleaned, cell owner_infos, cell pending_queries, int lock_until) = unpack_state();
 
-  throw_unless(38, now() > lock_until);
   last_cleaned -= last_cleaned == 0;
 
   (slice owner_info, var found?) = owner_infos.udict_get?(8, root_i);

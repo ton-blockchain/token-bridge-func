@@ -1,0 +1,739 @@
+"Asm.fif" include
+// automatically generated from `multisig.fc` incl:`stdlib.fc` incl:`params.fc` 
+PROGRAM{
+  DECLPROC force_chain
+  DECLPROC unpack_state
+  DECLPROC pack_state
+  DECLPROC pack_owner_info
+  DECLPROC unpack_owner_info
+  DECLPROC check_signatures
+  DECLPROC parse_msg
+  DECLPROC check_proposed_query
+  DECLPROC unpack_query_data
+  DECLPROC dec_flood
+  DECLPROC try_init
+  DECLPROC recv_external
+  DECLPROC update_pending_queries
+  DECLPROC calc_boc_size
+  DECLPROC recv_internal
+  104746 DECLMETHOD get_query_state
+  117746 DECLMETHOD processed?
+  81625 DECLMETHOD create_init_state
+  DECLPROC merge_list
+  120004 DECLMETHOD get_public_keys
+  87157 DECLMETHOD check_query_signatures
+  124629 DECLMETHOD message_signed_by_id?
+  109260 DECLMETHOD messages_by_mask
+  124981 DECLMETHOD get_messages_signed_by_id
+  85042 DECLMETHOD get_messages_unsigned_by_id
+  120055 DECLMETHOD get_messages_unsigned
+  114740 DECLMETHOD get_n_k
+  83381 DECLMETHOD merge_inner_queries
+  66957 DECLMETHOD get_lock_timeout
+  force_chain PROC:<{
+    //  addr
+    REWRITESTDADDR	//  _8 _9
+    DROP	//  wc
+    0 EQINT	//  _6
+    333 THROWIFNOT
+  }>
+  unpack_state PROCREF:<{
+    // 
+    c4 PUSH	//  _1
+    CTOS	//  ds
+    32 LDU	//  _4 ds
+    8 LDU	//  _4 _7 ds
+    8 LDU	//  _4 _7 _10 ds
+    64 LDU	//  _4 _7 _10 _13 ds
+    LDDICT	//  _4 _7 _10 _13 _16 ds
+    LDDICT	//  _4 _7 _10 _13 _16 _18 ds
+    32 LDU	//  res res res res res res res ds
+    ENDS
+  }>
+  pack_state PROCREF:<{
+    //  pending_queries owner_infos last_cleaned k n wallet_id lock_until
+    SWAP
+    NEWC	//  pending_queries owner_infos last_cleaned k n lock_until wallet_id _7
+    32 STU	//  pending_queries owner_infos last_cleaned k n lock_until _9
+    s1 s2 XCHG	//  pending_queries owner_infos last_cleaned k lock_until n _9
+    8 STU	//  pending_queries owner_infos last_cleaned k lock_until _11
+    s1 s2 XCHG	//  pending_queries owner_infos last_cleaned lock_until k _11
+    8 STU	//  pending_queries owner_infos last_cleaned lock_until _13
+    s1 s2 XCHG	//  pending_queries owner_infos lock_until last_cleaned _13
+    64 STU	//  pending_queries owner_infos lock_until _15
+    s1 s2 XCHG	//  pending_queries lock_until owner_infos _15
+    STDICT	//  pending_queries lock_until _16
+    s1 s2 XCHG	//  lock_until pending_queries _16
+    STDICT	//  lock_until _17
+    32 STU	//  _19
+    ENDC	//  _20
+  }>
+  pack_owner_info PROCREF:<{
+    //  public_key flood
+    SWAP
+    NEWC	//  flood public_key _2
+    256 STU	//  flood _4
+    8 STU	//  _6
+  }>
+  unpack_owner_info PROCREF:<{
+    //  cs
+    256 LDU	//  _1 cs
+    8 LDU	//  _1 _10 _9
+    DROP	//  _1 _4
+  }>
+  check_signatures PROCREF:<{
+    //  public_keys signatures hash cnt_bits
+    0 PUSHINT	//  public_keys signatures hash cnt_bits cnt=0
+    UNTIL:<{
+      s0 s3 XCHG	//  public_keys cnt hash cnt_bits signatures
+      CTOS	//  public_keys cnt hash cnt_bits cs
+      9 PUSHPOW2	//  public_keys cnt hash cnt_bits cs _10=512
+      LDSLICEX	//  public_keys cnt hash cnt_bits signature cs
+      8 LDU	//  public_keys cnt hash cnt_bits signature i cs
+      LDDICT	//  public_keys cnt hash cnt_bits signature i _43 _42
+      DROP	//  public_keys cnt hash cnt_bits signature i signatures
+      s1 s6 PUSH2
+      8 PUSHINT	//  public_keys cnt hash cnt_bits signature i signatures i public_keys _20=8
+      DICTUGET
+      NULLSWAPIFNOT	//  public_keys cnt hash cnt_bits signature i signatures public_key found?
+      37 THROWIFNOT
+      256 PLDU	//  public_keys cnt hash cnt_bits signature i signatures _26
+      s5 s3 s3 PUXC2	//  public_keys cnt hash cnt_bits signatures i hash signature _26
+      CHKSIGNU	//  public_keys cnt hash cnt_bits signatures i _27
+      38 THROWIFNOT
+      POW2	//  public_keys cnt hash cnt_bits signatures mask
+      s2 s(-1) PUXC	//  public_keys cnt hash old_cnt_bits signatures cnt_bits mask
+      OR	//  public_keys cnt hash old_cnt_bits signatures cnt_bits
+      s0 s2 PUXC	//  public_keys cnt hash cnt_bits signatures cnt_bits old_cnt_bits
+      NEQ	//  public_keys cnt hash cnt_bits signatures should_check
+      s1 s4 XCHG	//  public_keys signatures hash cnt_bits cnt should_check
+      SUB	//  public_keys signatures hash cnt_bits cnt
+      s3 PUSH	//  public_keys signatures hash cnt_bits cnt signatures
+      ISNULL	//  public_keys signatures hash cnt_bits cnt _37
+    }>	//  public_keys signatures hash cnt_bits cnt
+    2 2 BLKDROP2
+    s2 POP	//  cnt cnt_bits
+  }>
+  parse_msg PROCREF:<{
+    //  in_msg
+    8 LDU	//  mode in_msg
+    LDREF	//  mode _24 _23
+    DROP	//  mode msg
+    DUP	//  mode msg msg
+    CTOS	//  mode msg msg'
+    4 LDU	//  mode msg flags msg'
+    LDMSGADDR	//  mode msg flags _28 _27
+    NIP	//  mode msg flags msg'
+    LDMSGADDR	//  mode msg flags _30 _29
+    DROP	//  mode msg flags _18
+    REWRITESTDADDR	//  mode msg flags wc addr
+    ROT	//  mode msg wc addr flags
+  }>
+  check_proposed_query PROCINLINE:<{
+    //  in_msg
+    DUP	//  in_msg in_msg
+    SREFS	//  in_msg _2
+    1 EQINT	//  in_msg _4
+    OVER	//  in_msg _4 in_msg
+    SBITS	//  in_msg _4 _5
+    8 EQINT	//  in_msg _4 _7
+    AND	//  in_msg _8
+    43 THROWIFNOT
+    parse_msg INLINECALLDICT	//  _18 _19 _20 _21 _22
+    5 BLKDROP	// 
+  }>
+  unpack_query_data PROCREF:<{
+    //  in_msg n query found? root_i
+    SWAP	//  in_msg n query root_i found?
+    IFJMP:<{	//  in_msg n query root_i
+      DROP	//  in_msg n query
+      1 LDI	//  in_msg n _6 query
+      SWAP	//  in_msg n query _6
+      35 THROWIFNOT
+      8 LDU	//  in_msg n _14 query
+      8 LDU	//  in_msg n _14 _17 query
+      s0 s3 XCHG2	//  in_msg _17 _14 query n
+      LDUX	//  in_msg cnt creator_i cnt_bits msg
+      DUP	//  in_msg cnt creator_i cnt_bits msg msg
+      HASHSU	//  in_msg cnt creator_i cnt_bits msg _23
+      s0 s5 XCHG	//  _23 cnt creator_i cnt_bits msg in_msg
+      HASHSU	//  _23 cnt creator_i cnt_bits msg _24
+      s1 s5 XCHG	//  msg cnt creator_i cnt_bits _23 _24
+      EQUAL	//  msg cnt creator_i cnt_bits _25
+      36 THROWIFNOT
+      s0 s3 XCHG2	//  creator_i cnt cnt_bits msg
+    }>	//  in_msg n query root_i
+    2 1 BLKDROP2	//  in_msg root_i
+    OVER	//  in_msg root_i in_msg
+    check_proposed_query INLINECALLDICT
+    0 PUSHINT	//  in_msg root_i _28=0
+    s0 s1 s2 XCPUXC	//  root_i _28=0 _29=0 in_msg
+  }>
+  dec_flood PROC:<{
+    //  owner_infos creator_i
+    s0 s1 PUSH2
+    8 PUSHINT	//  owner_infos creator_i creator_i owner_infos _4=8
+    DICTUGET
+    NULLSWAPIFNOT	//  owner_infos creator_i _15 _16
+    DROP	//  owner_infos creator_i owner_info
+    unpack_owner_info INLINECALLDICT	//  owner_infos creator_i public_key flood
+    DEC	//  owner_infos creator_i public_key _11
+    pack_owner_info INLINECALLDICT	//  owner_infos creator_i _12
+    s0 s2 XCHG
+    8 PUSHINT	//  _12 creator_i owner_infos _13=8
+    DICTUSETB	//  owner_infos
+  }>
+  try_init PROCREF:<{
+    // 
+    unpack_state INLINECALLDICT	//  wallet_id n k last_cleaned owner_infos pending_queries lock_until
+    s0 s3 XCHG	//  wallet_id n k lock_until owner_infos pending_queries last_cleaned
+    37 THROWIF
+    ACCEPT
+    s4 s5 XCHG2
+    1 PUSHINT
+    s0 s4 XCHG
+    s0 s3 XCHG	//  pending_queries owner_infos _11=1 k n wallet_id lock_until
+    pack_state INLINECALLDICT	//  _12
+    c4 POP
+  }>
+  recv_external PROC:<{
+    // 
+    try_init INLINECALLDICT
+  }>
+  update_pending_queries PROCREF:<{
+    //  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n k
+    s3 s(-1) PUXC	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n cnt k
+    GEQ	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n _9
+    IF:<{	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n
+      3 BLKDROP	//  pending_queries owner_infos msg query_id creator_i
+      s0 s2 XCHG	//  pending_queries owner_infos creator_i query_id msg
+      parse_msg INLINECALLDICT	//  pending_queries owner_infos creator_i query_id _45 _46 _47 _48 _49
+      3 BLKDROP	//  pending_queries owner_infos creator_i query_id mode msg'
+      SWAP	//  pending_queries owner_infos creator_i query_id msg' mode
+      SENDRAWMSG
+      0 PUSHINT	//  pending_queries owner_infos creator_i query_id _22=0
+      NEWC	//  pending_queries owner_infos creator_i query_id _22=0 _23
+      1 STI	//  pending_queries owner_infos creator_i query_id _25
+      s0 s1 s4 XCHG3
+      64 PUSHINT	//  creator_i owner_infos _25 query_id pending_queries _26=64
+      DICTUSETB	//  creator_i owner_infos pending_queries
+      s0 s2 XCHG	//  pending_queries owner_infos creator_i
+      dec_flood CALLDICT	//  pending_queries owner_infos
+    }>ELSE<{	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n
+      1 PUSHINT	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n _31=1
+      NEWC	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n _31=1 _32
+      1 STU	//  pending_queries owner_infos msg query_id creator_i cnt cnt_bits n _34
+      s1 s4 XCHG	//  pending_queries owner_infos msg query_id n cnt cnt_bits creator_i _34
+      8 STU	//  pending_queries owner_infos msg query_id n cnt cnt_bits _36
+      s1 s2 XCHG	//  pending_queries owner_infos msg query_id n cnt_bits cnt _36
+      8 STU	//  pending_queries owner_infos msg query_id n cnt_bits _38
+      ROT	//  pending_queries owner_infos msg query_id cnt_bits _38 n
+      STUX	//  pending_queries owner_infos msg query_id _39
+      ROT	//  pending_queries owner_infos query_id _39 msg
+      STSLICER	//  pending_queries owner_infos query_id _40
+      s0 s1 s3 XCHG3
+      64 PUSHINT	//  owner_infos _40 query_id pending_queries _41=64
+      DICTUSETB	//  owner_infos pending_queries
+      SWAP	//  pending_queries owner_infos
+    }>
+  }>
+  calc_boc_size PROC:<{
+    //  cells bits root
+    s0 s2 XCHG	//  root bits cells
+    INC	//  root bits cells
+    s2 PUSH	//  root bits cells root
+    SBITS	//  root bits cells _5
+    s1 s2 XCHG	//  root cells bits _5
+    ADD	//  root cells bits
+    WHILE:<{
+      s2 PUSH	//  root cells bits root
+      SREFS	//  root cells bits _7
+    }>DO<{	//  root cells bits
+      s0 s2 XCHG	//  bits cells root
+      LDREF	//  bits cells _8 root
+      SWAP	//  bits cells root _8
+      CTOS	//  bits cells root _10
+      s1 s3 XCHG	//  root cells bits _10
+      calc_boc_size CALLDICT	//  root cells bits
+    }>	//  root cells bits
+    1 2 BLKDROP2	//  cells bits
+  }>
+  recv_internal PROC:<{
+    //  in_msg_cell in_msg
+    SWAP	//  in_msg in_msg_cell
+    CTOS	//  in_msg cs
+    4 LDU	//  in_msg flags cs
+    SWAP
+    1 PUSHINT	//  in_msg cs flags _8=1
+    AND	//  in_msg cs _9
+    IFJMP:<{	//  in_msg cs
+      2DROP	// 
+    }>	//  in_msg cs
+    OVER	//  in_msg cs in_msg
+    SEMPTY	//  in_msg cs _10
+    IFJMP:<{	//  in_msg cs
+      2DROP	// 
+      try_init INLINECALLDICT
+    }>	//  in_msg cs
+    SWAP
+    9 PUSHPOW2	//  cs in_msg _14=512
+    LDSLICEX	//  cs root_signature in_msg
+    DUP	//  cs root_signature in_msg in_msg
+    HASHSU	//  cs root_signature in_msg root_hash
+    SWAP	//  cs root_signature root_hash in_msg
+    8 LDU	//  cs root_signature root_hash root_i in_msg
+    unpack_state INLINECALLDICT	//  cs root_signature root_hash root_i in_msg wallet_id n k last_cleaned owner_infos pending_queries lock_until
+    s3 PUSH	//  cs root_signature root_hash root_i in_msg wallet_id n k last_cleaned owner_infos pending_queries lock_until last_cleaned
+    0 EQINT	//  cs root_signature root_hash root_i in_msg wallet_id n k last_cleaned owner_infos pending_queries lock_until _31
+    s1 s4 XCHG	//  cs root_signature root_hash root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned _31
+    SUB	//  cs root_signature root_hash root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned
+    s8 s2 PUSH2
+    8 PUSHINT	//  cs root_signature root_hash root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned root_i owner_infos _35=8
+    DICTUGET
+    NULLSWAPIFNOT	//  cs root_signature root_hash root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned owner_info found?
+    31 THROWIFNOT
+    unpack_owner_info INLINECALLDICT	//  cs root_signature root_hash root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned public_key flood
+    s11 s12 s11 XC2PU	//  cs flood public_key root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned root_hash root_signature public_key
+    CHKSIGNU	//  cs flood public_key root_i in_msg wallet_id n k lock_until owner_infos pending_queries last_cleaned _43
+    32 THROWIFNOT
+    s0 s7 XCHG	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries in_msg
+    LDDICT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures in_msg
+    DUP	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures in_msg in_msg
+    HASHSU	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures in_msg hash
+    SWAP	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash in_msg
+    32 LDU	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_wallet_id in_msg
+    s1 s9 XCPU	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash in_msg query_wallet_id wallet_id
+    EQUAL	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash in_msg _55
+    42 THROWIFNOT
+    64 LDU	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg
+    0 PUSHINT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg _63=0
+    s0 s1 PUSH2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg _63=0 _64=0 in_msg
+    calc_boc_size CALLDICT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg msg_cnt msg_bits
+    SWAP	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg msg_bits msg_cnt
+    8 GTINT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg msg_bits _68
+    SWAP
+    11 PUSHPOW2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg _68 msg_bits _69=2048
+    GREATER	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg _68 _70
+    OR	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg _71
+    40 THROWIF
+    s1 s4 PUSH2
+    64 PUSHINT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query_id pending_queries _75=64
+    DICTUGET
+    NULLSWAPIFNOT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found?
+    DUP	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found? found?
+    IFNOT:<{	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found?
+      s0 s15 XCHG	//  cs found? public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query flood
+      INC	//  cs found? public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query flood
+      DUP	//  cs found? public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query flood flood
+      10 GTINT	//  cs found? public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query flood _81
+      39 THROWIF
+      s0 s15 XCHG	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found?
+    }>	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found?
+    NOW	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found? _84
+    32 LSHIFT#	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found? bound
+    s4 s0 PUSH2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found? bound query_id bound
+    LESS	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id in_msg query found? bound _88
+    33 THROWIF
+    s3 s11 s2 XCPUXC
+    s4 s15 PUSH2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound in_msg n query found? root_i
+    unpack_query_data INLINECALLDICT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt cnt_bits msg
+    16 s() PUSH	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt cnt_bits msg root_i
+    POW2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt cnt_bits msg mask
+    s2 s0 PUSH2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt cnt_bits msg mask cnt_bits mask
+    AND	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt cnt_bits msg mask _99
+    34 THROWIF
+    s1 s2 XCHG	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt msg cnt_bits mask
+    OR	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt msg cnt_bits
+    s0 s2 XCHG	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt
+    INC	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt
+    s5 PUSH	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt found?
+    NOT	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _105
+    s1 s13 PUSH2	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _105 cnt k
+    LESS	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _105 _106
+    AND	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _107
+    s5 PUSH
+    15461882265600 PUSHINTX	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _107 bound _112
+    ADD	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _107 _113
+    s8 PUSH	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _107 _113 query_id
+    GREATER	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _107 _114
+    AND	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id found? bound creator_i cnt_bits msg cnt _115
+    41 THROWIF
+    s0 s5 XCHG	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id cnt bound creator_i cnt_bits msg found?
+    IFNOT:<{	//  cs flood public_key root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id cnt bound creator_i cnt_bits msg
+      s1 16 s() XCHG
+      s0 17 s() XCHG	//  cs msg cnt_bits root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id cnt bound creator_i public_key flood
+      pack_owner_info INLINECALLDICT	//  cs msg cnt_bits root_i last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id cnt bound creator_i _118
+      s0 s14 s8 XCHG3
+      8 PUSHINT	//  cs msg cnt_bits creator_i last_cleaned wallet_id n k lock_until bound pending_queries signatures hash query_id cnt _118 root_i owner_infos _119=8
+      DICTUSETB	//  cs msg cnt_bits creator_i last_cleaned wallet_id n k lock_until bound pending_queries signatures hash query_id cnt owner_infos
+      s12 s14 XCHG
+      s0 s6 XCHG	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id cnt bound
+    }>ELSE<{
+      s2 17 s() XCHG
+      s15 POP
+      s15 POP
+      DROP	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until owner_infos pending_queries signatures hash query_id cnt bound
+    }>
+    s5 s6 s12 XC2PU
+    s3 s15 s6 PUSH3
+    17 s() PUSH
+    s14 s13 PUSH2	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos msg query_id creator_i cnt cnt_bits n k
+    update_pending_queries INLINECALLDICT	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos
+    s1 s0 s11 PUSH3
+    s11 s12 s13 PUSH3
+    s13 PUSH	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos pending_queries owner_infos last_cleaned k n wallet_id lock_until
+    pack_state INLINECALLDICT	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos _122
+    c4 POP
+    0 PUSHINT	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0
+    s5 PUSH	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0 signatures
+    ISNULL	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0 _126
+    s7 s10 PUSH2	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0 _126 cnt k
+    GEQ	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0 _126 _127
+    OR	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0 _128
+    IFNOT:<{	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos need_save=0
+      DROP	//  cs creator_i cnt_bits msg last_cleaned wallet_id n k lock_until bound cnt signatures hash query_id pending_queries owner_infos
+      s4 s0 s2 XCPUXC
+      s4 s14 XCHG2	//  cs creator_i query_id msg last_cleaned wallet_id n k lock_until bound cnt pending_queries owner_infos owner_infos signatures hash cnt_bits
+      check_signatures INLINECALLDICT	//  cs creator_i query_id msg last_cleaned wallet_id n k lock_until bound cnt pending_queries owner_infos new_cnt cnt_bits
+      s4 s4 XCHG2	//  cs creator_i query_id msg last_cleaned wallet_id n k lock_until bound cnt_bits pending_queries owner_infos cnt new_cnt
+      ADD	//  cs creator_i query_id msg last_cleaned wallet_id n k lock_until bound cnt_bits pending_queries owner_infos cnt
+      s6 s5 s0 XCHG3
+      s4 s10 XCHG
+      s3 s11 XCHG
+      s12 s0 s11 XCHG3
+      s7 s12 PUSH2	//  cs k lock_until bound last_cleaned wallet_id n pending_queries owner_infos msg query_id creator_i cnt cnt_bits n k
+      update_pending_queries INLINECALLDICT	//  cs k lock_until bound last_cleaned wallet_id n pending_queries owner_infos
+      -1 PUSHINT	//  cs k lock_until bound last_cleaned wallet_id n pending_queries owner_infos need_save=-1
+      s8 s1 s8 XCHG3
+      s7 s7 XCHG2
+      s0 s6 XCHG	//  cs need_save=-1 pending_queries owner_infos last_cleaned wallet_id n k lock_until bound
+    }>ELSE<{
+      s15 POP
+      s13 s12 XCHG2
+      6 BLKDROP	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound
+    }>
+    38 PUSHPOW2	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound _136
+    SUB	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound
+    UNTIL:<{
+      s7 PUSH
+      64 PUSHINT	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries _143=64
+      DICTUREMMIN
+      NULLSWAPIFNOT2	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f
+      DUP	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f f
+      IF:<{	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f
+        DROP	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i
+        s0 s3 PUSH2	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i i bound
+        LESS	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f
+      }>	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f
+      DUP	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f f
+      IF:<{	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound pending_queries' query i f
+        s9 POP
+        s10 POP
+        s10 POP	//  cs query i owner_infos f wallet_id n k lock_until bound pending_queries'
+        s0 s9 XCHG	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound query
+        1 LDI	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound _148 query
+        SWAP	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound query _148
+        IF:<{	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound query
+          8 LDU	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound _235 _234
+          DROP	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound _152
+          s1 s7 XCHG	//  cs pending_queries' i bound f wallet_id n k lock_until owner_infos _152
+          dec_flood CALLDICT	//  cs pending_queries' i bound f wallet_id n k lock_until owner_infos
+          s0 s6 XCHG	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound
+        }>ELSE<{
+          DROP	//  cs pending_queries' i owner_infos f wallet_id n k lock_until bound
+        }>	//  cs pending_queries last_cleaned owner_infos f wallet_id n k lock_until bound
+        -1 PUSHINT	//  cs pending_queries last_cleaned owner_infos f wallet_id n k lock_until bound need_save=-1
+        s0 s9 XCHG
+        s0 s8 XCHG
+        s0 s6 XCHG	//  cs need_save=-1 pending_queries owner_infos last_cleaned wallet_id n k lock_until bound f
+      }>ELSE<{
+        3 1 BLKDROP2	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound f
+      }>
+      NOT	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound _157
+    }>	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until bound
+    DROP	//  cs need_save pending_queries owner_infos last_cleaned wallet_id n k lock_until
+    s0 s7 XCHG	//  cs lock_until pending_queries owner_infos last_cleaned wallet_id n k need_save
+    IF:<{	//  cs lock_until pending_queries owner_infos last_cleaned wallet_id n k
+      s5 s6 XCHG
+      s4 s5 XCHG
+      s0 s3 XCHG
+      s2 s4 XCHG2	//  cs pending_queries owner_infos last_cleaned k n wallet_id lock_until
+      pack_state INLINECALLDICT	//  cs _158
+      c4 POP
+    }>ELSE<{
+      7 BLKDROP	//  cs
+    }>
+    LDMSGADDR	//  _237 _236
+    DROP	//  s_addr
+    0 PUSHINT	//  s_addr _164=0
+    24 PUSHINT	//  s_addr _164=0 _165=24
+    NEWC	//  s_addr _164=0 _165=24 _166
+    6 STU	//  s_addr _164=0 _168
+    ROT	//  _164=0 _168 s_addr
+    STSLICER	//  _164=0 _169
+    OVER	//  _164=0 _169 _170=0
+    STGRAMS	//  _164=0 _171
+    107 STU	//  _185
+    ENDC	//  msg
+    66 PUSHINT	//  msg _189
+    SENDRAWMSG
+  }>
+  get_query_state PROC:<{
+    //  query_id
+    unpack_state INLINECALLDICT	//  query_id _29 _30 _31 _32 _33 _34 _35
+    DROP
+    NIP
+    s2 POP
+    s3 POP	//  query_id last_cleaned n pending_queries
+    s3 s(-1) PUXC
+    64 PUSHINT	//  query_id last_cleaned n query_id pending_queries _11=64
+    DICTUGET
+    NULLSWAPIFNOT	//  query_id last_cleaned n cs found
+    IFJMP:<{	//  query_id last_cleaned n cs
+      2 2 BLKDROP2	//  n cs
+      1 LDI	//  n _13 cs
+      SWAP	//  n cs _13
+      IFJMP:<{	//  n cs
+        16 LDU	//  n _41 _40
+        NIP	//  n cs
+        0 PUSHINT	//  n cs _21=0
+        s0 s2 XCHG	//  _21=0 cs n
+        LDUX	//  _21=0 _43 _42
+        DROP	//  _21=0 _22
+      }>	//  n cs
+      2DROP	// 
+      -1 PUSHINT	//  _24=-1
+      0 PUSHINT	//  _24=-1 _25=0
+    }>	//  query_id last_cleaned n cs
+    2DROP	//  query_id last_cleaned
+    LEQ	//  _26
+    NEGATE	//  _27
+    0 PUSHINT	//  _27 _28=0
+  }>
+  processed? PROC:<{
+    //  query_id
+    get_query_state CALLDICT	//  _4 _5
+    DROP	//  x
+  }>
+  create_init_state PROC:<{
+    //  wallet_id n k owners_info lock_until
+    NEWDICT	//  wallet_id n k owners_info lock_until _5
+    s4 s1 s5 XCHG3
+    0 PUSHINT
+    s0 s4 XCHG
+    s3 s1 s3 XCHG3	//  _5 owners_info _6=0 k n wallet_id lock_until
+    pack_state INLINECALLDICT	//  _7
+  }>
+  merge_list PROC:<{
+    //  a b
+    OVER	//  a b a
+    ISNULL	//  a b _2
+    IFJMP:<{	//  a b
+      NIP	//  b
+    }>	//  a b
+    DUP	//  a b b
+    ISNULL	//  a b _3
+    IFJMP:<{	//  a b
+      DROP	//  a
+    }>	//  a b
+    SWAP	//  b a
+    CTOS	//  b as
+    DUP	//  b as as
+    SREFS	//  b as _6
+    0 NEQINT	//  b as _8
+    IFJMP:<{	//  b as
+      LDREF	//  b _10 as
+      s0 s2 XCHG	//  as _10 b
+      merge_list CALLDICT	//  as tail
+      NEWC
+      ROT	//  tail _13 as
+      STSLICER	//  tail _14
+      STREF	//  _15
+      ENDC	//  _16
+    }>	//  b as
+    1 PUSHINT	//  b as _18=1
+    SDSKIPLAST	//  b as
+    NEWC	//  b as _20
+    SWAP	//  b _20 as
+    STSLICER	//  b _21
+    STDICT	//  _22
+    ENDC	//  _23
+  }>
+  get_public_keys PROC:<{
+    // 
+    unpack_state INLINECALLDICT	//  _8 _9 _10 _11 _12 _13 _14
+    s2 s6 XCHG
+    6 BLKDROP	//  public_keys
+  }>
+  check_query_signatures PROC:<{
+    //  query
+    CTOS	//  cs
+    9 PUSHPOW2	//  cs _5=512
+    LDSLICEX	//  root_signature cs
+    DUP	//  root_signature cs cs
+    HASHSU	//  root_signature cs root_hash
+    SWAP	//  root_signature root_hash cs
+    8 LDU	//  root_signature root_hash root_i cs
+    get_public_keys CALLDICT	//  root_signature root_hash root_i cs public_keys
+    s2 s0 PUSH2
+    8 PUSHINT	//  root_signature root_hash root_i cs public_keys root_i public_keys _17=8
+    DICTUGET
+    NULLSWAPIFNOT	//  root_signature root_hash root_i cs public_keys public_key found?
+    31 THROWIFNOT
+    256 PLDU	//  root_signature root_hash root_i cs public_keys _23
+    5 1 REVERSE	//  public_keys cs root_i root_hash root_signature _23
+    CHKSIGNU	//  public_keys cs root_i _24
+    32 THROWIFNOT
+    POW2	//  public_keys cs mask
+    SWAP	//  public_keys mask cs
+    LDDICT	//  public_keys mask signatures cs
+    OVER	//  public_keys mask signatures cs signatures
+    ISNULL	//  public_keys mask signatures cs _32
+    IFJMP:<{	//  public_keys mask signatures cs
+      2DROP
+      1 PUSHINT
+      s2 POP	//  _33=1 mask
+    }>	//  public_keys mask signatures cs
+    HASHSU	//  public_keys mask signatures _35
+    ROT	//  public_keys signatures _35 mask
+    check_signatures INLINECALLDICT	//  cnt mask
+    SWAP	//  mask cnt
+    INC	//  mask _38
+    SWAP	//  _38 mask
+  }>
+  message_signed_by_id? PROC:<{
+    //  id query_id
+    unpack_state INLINECALLDICT	//  id query_id _30 _31 _32 _33 _34 _35 _36
+    s1 s4 XCHG
+    4 BLKDROP
+    s2 POP	//  id query_id pending_queries n
+    -ROT
+    64 PUSHINT	//  id n query_id pending_queries _12=64
+    DICTUGET
+    NULLSWAPIFNOT	//  id n cs f
+    IFJMP:<{	//  id n cs
+      1 LDI	//  id n _14 cs
+      SWAP	//  id n cs _14
+      IFJMP:<{	//  id n cs
+        16 PUSHINT	//  id n cs _20
+        SDSKIPFIRST	//  id n _21
+        SWAP	//  id _21 n
+        PLDUX	//  id cnt_bits
+        SWAP	//  cnt_bits id
+        POW2	//  cnt_bits _24
+        AND	//  _25
+        IFJMP:<{	// 
+          -1 PUSHINT	//  _26=-1
+        }>	// 
+        0 PUSHINT	//  _27=0
+      }>	//  id n cs
+      3 BLKDROP	// 
+      -1 PUSHINT	//  _28=-1
+    }>	//  id n cs
+    3 BLKDROP	// 
+    0 PUSHINT	//  _29=0
+  }>
+  messages_by_mask PROC:<{
+    //  mask inv
+    unpack_state INLINECALLDICT	//  mask inv _35 _36 _37 _38 _39 _40 _41
+    s1 s4 XCHG
+    4 BLKDROP
+    s2 POP	//  mask inv pending_queries n
+    -1 PUSHINT	//  mask inv pending_queries n i=-1
+    NEWDICT	//  mask inv pending_queries n i=-1 a
+    UNTIL:<{
+      s1 s3 XCPU
+      64 PUSHINT	//  mask inv pending_queries n a i pending_queries _16=64
+      DICTUGETNEXT
+      NULLSWAPIFNOT2	//  mask inv pending_queries n a cs i f
+      DUP	//  mask inv pending_queries n a cs i f f
+      IF:<{	//  mask inv pending_queries n a cs i f
+        s0 s2 XCHG	//  mask inv pending_queries n a f i cs
+        1 LDI	//  mask inv pending_queries n a f i _18 cs
+        SWAP	//  mask inv pending_queries n a f i cs _18
+        IF:<{	//  mask inv pending_queries n a f i cs
+          DUP
+          16 PUSHINT	//  mask inv pending_queries n a f i cs cs _24
+          SDSKIPFIRST	//  mask inv pending_queries n a f i cs _25
+          s5 PUSH	//  mask inv pending_queries n a f i cs _25 n
+          PLDUX	//  mask inv pending_queries n a f i cs _26
+          s7 PUSH	//  mask inv pending_queries n a f i cs _26 inv
+          XOR	//  mask inv pending_queries n a f i cs cnt_bits
+          s8 PUSH	//  mask inv pending_queries n a f i cs cnt_bits mask
+          AND	//  mask inv pending_queries n a f i cs _28
+          IF:<{	//  mask inv pending_queries n a f i cs
+            NEWC	//  mask inv pending_queries n a f i cs _30
+            SWAP	//  mask inv pending_queries n a f i _30 cs
+            STSLICER	//  mask inv pending_queries n a f i _31
+            s0 s0 s3 XCPUXC
+            64 PUSHINT	//  mask inv pending_queries n i f _31 i a _32=64
+            DICTUSETB	//  mask inv pending_queries n i f a
+            s0 s2 XCHG	//  mask inv pending_queries n a f i
+          }>ELSE<{
+            DROP	//  mask inv pending_queries n a f i
+          }>
+        }>ELSE<{
+          DROP	//  mask inv pending_queries n a f i
+        }>
+      }>ELSE<{
+        s2 POP	//  mask inv pending_queries n a f i
+      }>
+      SWAP	//  mask inv pending_queries n a i f
+      NOT	//  mask inv pending_queries n a i _34
+      s1 s2 XCHG	//  mask inv pending_queries n i a _34
+    }>	//  mask inv pending_queries n i a
+    5 1 BLKDROP2	//  a
+  }>
+  get_messages_signed_by_id PROC:<{
+    //  id
+    POW2	//  _2
+    0 PUSHINT	//  _2 _3=0
+    messages_by_mask CALLDICT	//  _4
+  }>
+  get_messages_unsigned_by_id PROC:<{
+    //  id
+    POW2	//  _2
+    -1 PUSHINT	//  _2 _4
+    messages_by_mask CALLDICT	//  _5
+  }>
+  get_messages_unsigned PROC:<{
+    // 
+    -1 PUSHINT	//  _1
+    0 PUSHINT	//  _1 _2=0
+    messages_by_mask CALLDICT	//  _3
+  }>
+  get_n_k PROC:<{
+    // 
+    unpack_state INLINECALLDICT	//  _8 _9 _10 _11 _12 _13 _14
+    4 BLKDROP
+    1 2 BLKDROP2	//  n k
+  }>
+  merge_inner_queries PROC:<{
+    //  a b
+    SWAP	//  b a
+    CTOS	//  b ca
+    SWAP	//  ca b
+    CTOS	//  ca cb
+    SWAP	//  cb ca
+    LDDICT	//  cb list_a ca
+    s0 s2 XCHG	//  ca list_a cb
+    LDDICT	//  ca list_a list_b cb
+    s3 PUSH	//  ca list_a list_b cb ca
+    HASHSU	//  ca list_a list_b cb _13
+    SWAP	//  ca list_a list_b _13 cb
+    HASHSU	//  ca list_a list_b _13 _14
+    EQUAL	//  ca list_a list_b _15
+    31 THROWIFNOT
+    merge_list CALLDICT	//  ca _17
+    NEWC	//  ca _17 _18
+    STDICT	//  ca _19
+    SWAP	//  _19 ca
+    STSLICER	//  _20
+    ENDC	//  _21
+  }>
+  get_lock_timeout PROC:<{
+    // 
+    unpack_state INLINECALLDICT	//  _8 _9 _10 _11 _12 _13 _14
+    6 1 BLKDROP2	//  lock_until
+  }>
+}END>c
